@@ -6,6 +6,7 @@ export interface BotConfig {
 	port: number;
 	databasePath: string;
 	selfId: string;
+	autoSelfId?: boolean;
 	webhookSecret: string;
 	napcatUrl: string;
 	napcatToken: string;
@@ -112,8 +113,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 		if (!value || value.length < min) throw new Error(`请配置 ${key}（至少 ${min} 个字符）。`);
 		return value;
 	};
-	const selfId = qqId(required('QQ_BOT_SELF_ID'));
-	if (!selfId) throw new Error('QQ_BOT_SELF_ID 无效。');
+	if (env.QQ_BOT_AUTO_SELF_ID !== undefined && !['true', 'false'].includes(env.QQ_BOT_AUTO_SELF_ID))
+		throw new Error('QQ_BOT_AUTO_SELF_ID 必须是 true 或 false。');
+	const autoSelfId = env.QQ_BOT_AUTO_SELF_ID === 'true';
+	const selfId = autoSelfId ? '' : qqId(required('QQ_BOT_SELF_ID'));
+	if (!autoSelfId && !selfId) throw new Error('QQ_BOT_SELF_ID 无效。');
 	const port = Number(env.QQ_BOT_PORT ?? 3100);
 	if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('QQ_BOT_PORT 无效。');
 	const managed = env.QQ_BOT_MANAGED === 'true';
@@ -131,7 +135,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 		host: env.QQ_BOT_HOST ?? '127.0.0.1',
 		port,
 		databasePath: env.QQ_BOT_DB ?? './data/qq-bot.sqlite',
-		selfId,
+		selfId: selfId!,
+		autoSelfId,
 		webhookSecret: required('NAPCAT_WEBHOOK_SECRET', 24),
 		napcatUrl: httpUrl(required('NAPCAT_API_URL')),
 		napcatToken: required('NAPCAT_API_TOKEN', 24),

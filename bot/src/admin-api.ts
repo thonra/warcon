@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { AdminStore, AdminValidationError, AdminConflictError } from './admin-store';
 import { BotStore } from './store';
 import type { ManagedServer, SettingsUpdate } from './admin-contracts';
+import type { NapCatStatus } from './napcat-connection';
 
 export interface AdminHooks {
 	/** Fixed operator-configured browser origin for TLS termination; never inferred from proxy headers. */
@@ -14,7 +15,8 @@ export interface AdminHooks {
 	) => Promise<{ map: string; playerCount: number; factions: string[] }>;
 	/** Private temporary directory. Every completed download removes its snapshot. */
 	backupPath: string;
-	selfId: string;
+	selfId: () => string;
+	connection?: () => NapCatStatus;
 	inboxStats: () => Record<string, number>;
 }
 const COOKIE = 'warcon_bot_admin';
@@ -164,7 +166,14 @@ export class AdminApi {
 					accounts: this.botStore.listAccounts(),
 					operations: this.botStore.listOperations(),
 					inbox: this.hooks.inboxStats(),
-					selfId: this.hooks.selfId
+					selfId: this.hooks.selfId(),
+					connection: this.hooks.connection?.() ?? null
+				});
+			if (path === '/connection' && request.method === 'GET')
+				return json({
+					ok: true,
+					selfId: this.hooks.selfId(),
+					connection: this.hooks.connection?.() ?? null
 				});
 			const operationMatch = path.match(/^\/operations\/([a-zA-Z0-9-]{1,80})\/resolve$/);
 			if (operationMatch && request.method === 'POST') {

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { qqId, type BotConfig } from './config';
 import type { BotHandler, BotMessage } from './contracts';
 import { Inbox } from './inbox';
+import type { NapCatConnection } from './napcat-connection';
 
 export type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -90,15 +91,14 @@ export class NapCatBot {
 		private inbox: Inbox,
 		private handler: BotHandler,
 		private fetcher: Fetcher = fetch,
-		private now: () => number = Date.now
+		private now: () => number = Date.now,
+		private connection?: NapCatConnection
 	) {}
 	async receive(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		if (request.method === 'GET' && url.pathname === '/health') return Response.json({ ok: true });
 		if (request.method !== 'POST' || url.pathname !== '/onebot/events')
 			return new Response('Not found', { status: 404 });
-		if (request.headers.get('x-self-id') !== this.config.selfId)
-			return new Response('Unauthorized', { status: 401 });
 		let body: Uint8Array;
 		try {
 			body = await smallBody(request);
@@ -107,12 +107,24 @@ export class NapCatBot {
 		}
 		if (!validSignature(body, request.headers.get('x-signature'), this.config.webhookSecret))
 			return new Response('Unauthorized', { status: 401 });
+		// Signed callbacks can prompt discovery, but cannot choose the active account themselves.
+		await this.connection?.refresh(request.headers.get('x-self-id') !== this.config.selfId);
+		if (this.connection && !this.connection.status().online)
+			return new Response('QQ offline', { status: 503 });
+		if (request.headers.get('x-self-id') !== this.config.selfId)
+			return new Response('Unauthorized', { status: 401 });
 		let event: unknown;
 		try {
 			event = JSON.parse(new TextDecoder().decode(body));
 		} catch {
 			return new Response('Invalid JSON', { status: 400 });
 		}
+		if (
+			event &&
+			typeof event === 'object' &&
+			qqId((event as Record<string, unknown>).self_id) === this.config.selfId
+		)
+			this.connection?.recordEvent();
 		const message = parseMessage(event, this.config.selfId, this.now());
 		if (!message || !this.config.groups.some((g) => g.groupId === message.groupId))
 			return Response.json({});
@@ -133,8 +145,13 @@ export class NapCatBot {
 		return this.working;
 	}
 	private async drain(): Promise<void> {
+		await this.connection?.refresh();
+		if (this.connection && !this.connection.status().online) return;
 		// Limit each pass so shutdown/maintenance gets a chance under sustained input.
 		for (let i = 0; i < 20; i++) {
+			if (!this.inbox.hasWork('pending')) break;
+			await this.connection?.refresh(true);
+			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claim();
 			if (!row) break;
 			let reply = '处理未完成，请稍后查询 /积分；涉及换边时请联系管理员核对，勿重复提交。';
@@ -156,6 +173,10 @@ export class NapCatBot {
 	}
 	private async sendReplies(): Promise<void> {
 		for (let i = 0; i < 20; i++) {
+			if (!this.inbox.hasWork('done')) return;
+			// Refresh after awaiting a command: an account may have changed while the game API was busy.
+			await this.connection?.refresh(true);
+			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claimReply();
 			if (!row) break;
 			let success = false;

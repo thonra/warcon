@@ -65,6 +65,13 @@ test('fixed admin origin is optional, normalized, and rejects paths or credentia
 		NAPCAT_API_TOKEN: 'y'.repeat(24)
 	};
 	expect(loadConfig(env).managed?.origin).toBeUndefined();
+	expect(loadConfig(env).selfId).toBe('123456789');
+	expect(loadConfig(env).autoSelfId).toBe(false);
+	expect(
+		loadConfig({ ...env, QQ_BOT_AUTO_SELF_ID: 'true', QQ_BOT_SELF_ID: undefined })
+	).toMatchObject({ autoSelfId: true, selfId: '' });
+	expect(() => loadConfig({ ...env, QQ_BOT_AUTO_SELF_ID: 'typo' })).toThrow('QQ_BOT_AUTO_SELF_ID');
+	expect(() => loadConfig({ ...env, QQ_BOT_SELF_ID: undefined })).toThrow('QQ_BOT_SELF_ID');
 	expect(loadConfig({ ...env, QQ_ADMIN_ORIGIN: ' https://bot.test/ ' }).managed?.origin).toBe(
 		'https://bot.test'
 	);

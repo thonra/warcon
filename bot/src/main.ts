@@ -7,6 +7,7 @@ import { CommandHandler } from './commands';
 import { WarconClient } from './warcon';
 import { Inbox } from './inbox';
 import { NapCatBot } from './napcat';
+import { NapCatConnection } from './napcat-connection';
 import { AdminStore } from './admin-store';
 import { AdminApi } from './admin-api';
 import { adminPage } from './admin-page';
@@ -63,12 +64,19 @@ async function main(): Promise<void> {
 		inbox.recover();
 		let warcon: WarconPort;
 		let admin: AdminApi | undefined;
+		let revision = 0;
+		const connection = config!.autoSelfId
+			? new NapCatConnection(config!, () => {
+					revision++;
+					store!.invalidateConfirmations();
+					inbox!.discardSession();
+				})
+			: undefined;
 		if (config!.managed) {
 			const auth = config!.managed;
 			adminStore = new AdminStore(path, auth.masterKey);
 			await adminStore.initialize(auth.username, auth.password);
 			let current: ManagedSettings = adminStore.getSettings();
-			let revision = 0;
 			config!.groups = current.groups;
 			warcon = new ManagedWarcon(
 				() => current.servers,
@@ -92,14 +100,18 @@ async function main(): Promise<void> {
 					};
 				},
 				backupPath: resolve(dirname(path), 'backups'),
-				selfId: config!.selfId,
+				selfId: () => config!.selfId,
+				connection: connection ? () => connection.status() : undefined,
 				inboxStats: () => inbox!.stats()
 			});
 		} else warcon = new WarconClient({ baseUrl: config!.warconUrl, token: config!.warconToken });
 		const bot = new NapCatBot(
 			config!,
 			inbox,
-			new CommandHandler(store, warcon, { configurationRevision: () => config!.revision })
+			new CommandHandler(store, warcon, { configurationRevision: () => config!.revision }),
+			fetch,
+			Date.now,
+			connection
 		);
 		const server = Bun.serve({
 			hostname: config!.host,
@@ -129,6 +141,10 @@ async function main(): Promise<void> {
 			void bot.pump().catch(() => console.error('消息处理异常，请检查本地记录。'));
 		}, 250);
 		const cleanup = setInterval(() => inbox!.prune(Date.now()), 3600000);
+		// Independent of the worker so an in-flight game request cannot hide a QQ logout.
+		const identityTimer = setInterval(() => {
+			void connection?.refresh().catch(() => console.error('NapCat 连接状态更新失败。'));
+		}, 1000);
 		console.log(
 			`Warcon QQ 机器人已监听 ${config!.host}:${config!.port}，已配置 ${config!.groups.length} 个群。`
 		);
@@ -143,8 +159,10 @@ async function main(): Promise<void> {
 		});
 		clearInterval(timer);
 		clearInterval(cleanup);
+		clearInterval(identityTimer);
 		await server.stop(true);
 		await bot.pump();
+		await connection?.refresh();
 	} finally {
 		adminStore?.close();
 		inbox?.close();

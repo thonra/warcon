@@ -28,7 +28,7 @@ cp bot/.env.example bot/.env
 bun run bot
 ```
 
-在 `bot/.env` 中启用 `QQ_BOT_MANAGED=true`，配置机器人 QQ 号、NapCat HTTP 地址和两个独立密钥。设置 `QQ_ADMIN_USER`、`QQ_ADMIN_PASSWORD`（首次启动创建管理员，至少 12 个字符）和 `QQ_BOT_MASTER_KEY`（32 随机字节的 Base64，例如 `openssl rand -base64 32`）。管理入口为 `http://127.0.0.1:3100/admin`。局域网访问时设置 `QQ_BOT_HOST=0.0.0.0`；跨公网使用 HTTPS 反向代理。
+在 `bot/.env` 中启用 `QQ_BOT_MANAGED=true` 和 `QQ_BOT_AUTO_SELF_ID=true`，配置 NapCat HTTP 地址和两个独立密钥。机器人会自动识别 NapCat 当前登录的 QQ，无需填写固定 QQ 号。设置 `QQ_ADMIN_USER`、`QQ_ADMIN_PASSWORD`（首次启动创建管理员，至少 12 个字符）和 `QQ_BOT_MASTER_KEY`（32 随机字节的 Base64，例如 `openssl rand -base64 32`）。管理入口为 `http://127.0.0.1:3100/admin`。局域网访问时设置 `QQ_BOT_HOST=0.0.0.0`；跨公网使用 HTTPS 反向代理。
 
 使用 Docker Compose 时，在仓库根目录执行：
 
@@ -59,6 +59,14 @@ Compose 默认启用网页管理，不需要创建或挂载 `groups.json`。配�
 2. **HTTP 客户端**：URL 指向 `http://机器人主机:3100/onebot/events`，它的 **token** 填 `NAPCAT_WEBHOOK_SECRET`，关闭上报自身消息。NapCat 使用这个 token 对原始请求体生成 `X-Signature`，机器人同时检查签名、QQ 号、群白名单和时间。
 
 容器内的 `127.0.0.1` 只指向容器自身；同一容器网络应填写服务名。切换旧机器人时保留 NapCat 登录卷，只替换网络上报配置并停用旧机器人。
+
+### 换号与自动重连
+
+启用 `QQ_BOT_AUTO_SELF_ID=true` 后，在 NapCat 界面登录新 QQ 即可，机器人每 5 秒检查一次在线状态和账号。管理页的连接栏每 5 秒刷新，显示当前 QQ、昵称、检查时间和最近一次已验证的消息上报时间。新 QQ 必须已加入后台配置的群，并保留上述 HTTP 服务端/客户端配置及密钥；某些 NapCat 部署为不同账号保存独立网络配置，需要在新账号下确认它们仍已启用。
+
+QQ 离线或切换时暂停接收和执行命令，作废原会话中排队的命令、未发送的回复和待确认的换边请求；重连后请重新发送命令。已经发往游戏的操作仍按实际结果记账，不会因 QQ 掉线而自动重放或退款。Steam 绑定、积分、服务器和群组配置保留，只处理后台允许的群。OneBot 的发送接口不支持按预期 QQ 号锁定账号，因此正好在切换瞬间已经发出的请求仍需以实际结果为准。
+
+若需要固定账号，设置 `QQ_BOT_AUTO_SELF_ID=false` 并填写 `QQ_BOT_SELF_ID`。未配置自动识别开关的旧部署仍使用固定账号模式。
 
 依据：[NapCat HTTP 客户端源码](https://github.com/NapNeko/NapCatQQ/blob/3420f0b76d7dc0ac92cde1663f21ea27f61e13bb/packages/napcat-onebot/network/http-client.ts)、[OneBot HTTP 上报协议](https://github.com/botuniverse/onebot-11/blob/master/communication/http-post.md)。
 

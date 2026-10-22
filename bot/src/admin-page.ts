@@ -30,7 +30,7 @@ export function adminPage(): string {
  <button id="tab-groups" class="tab" role="tab" aria-controls="content" aria-selected="false" tabindex="-1" data-tab="groups">群组</button>
  <button id="tab-accounts" class="tab" role="tab" aria-controls="content" aria-selected="false" tabindex="-1" data-tab="accounts">玩家与积分</button>
  <button id="tab-operations" class="tab" role="tab" aria-controls="content" aria-selected="false" tabindex="-1" data-tab="operations">操作记录</button>
- </nav></div><main id="content" role="tabpanel" aria-labelledby="tab-servers" tabindex="-1"></main>
+ </nav></div><div id="bot-connection" class="metric-line" role="status" style="max-width:1280px;margin:auto;padding:12px 28px;overflow-wrap:anywhere"></div><main id="content" role="tabpanel" aria-labelledby="tab-servers" tabindex="-1"></main>
 </div>
 <div id="initial" class="loading" role="status">正在读取管理会话…</div>
 <div id="notice" class="notice" role="status" aria-live="polite" hidden><span id="notice-text"></span><button aria-label="关闭提示" id="notice-close">×</button></div>
@@ -41,7 +41,7 @@ export function adminPage(): string {
 const $ = (id) => document.getElementById(id);
 let csrf = '', username = '', current = 'servers', settings = {revision:null,servers:[],groups:[]}, overview = null;
 let search = '', opState = 'all', formSave = null, modalBusy = false, editorStale = false, noticeTimer, fieldSequence = 0;
-let settingsLoaded = false, overviewLoaded = false;
+let settingsLoaded = false, overviewLoaded = false, connectionBusy = false;
 const connection = new Map();
 const node = (tag, cls, text) => { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined&&text!==null)n.textContent=String(text); return n; };
 const add = (parent, ...children) => { children.flat().forEach(c => {if(c)parent.append(c);});return parent; };
@@ -52,7 +52,7 @@ const shortTime = (value) => new Date(value).toLocaleTimeString('zh-CN',{hour12:
 const serverName = (id) => settings.servers.find(s=>s.id===id)?.name || id;
 function showNotice(message, error=false){clearTimeout(noticeTimer);$('notice-text').textContent=message;$('notice').className='notice'+(error?' error':'');$('notice').hidden=false;if(!error)noticeTimer=setTimeout(()=>{$('notice').hidden=true;},4500);}
 function formError(error){const box=$('editor').open?$('dialog-error'):$('login-view').hidden?null:$('login-error');const message=error instanceof Error?error.message:String(error);if(box){box.textContent=message;box.hidden=false;}else showNotice(message,true);}
-function showLogin(){csrf='';username='';$('initial').hidden=true;$('app').hidden=true;$('login-view').hidden=false;if($('editor').open)$('editor').close();$('password').value='';settingsLoaded=false;overviewLoaded=false;overview=null;settings={revision:null,servers:[],groups:[]};connection.clear();$('content').replaceChildren();}
+function showLogin(){csrf='';username='';$('initial').hidden=true;$('app').hidden=true;$('login-view').hidden=false;if($('editor').open)$('editor').close();$('password').value='';settingsLoaded=false;overviewLoaded=false;overview=null;settings={revision:null,servers:[],groups:[]};connection.clear();$('content').replaceChildren();$('bot-connection').replaceChildren();}
 async function request(path, options={}){
  const method=options.method||'GET';const headers={'Accept':'application/json'};if(options.body!==undefined)headers['Content-Type']='application/json';if(method!=='GET'&&csrf)headers['x-csrf-token']=csrf;
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
@@ -71,7 +71,11 @@ function filtered(rows, fields){const query=search.trim().toLowerCase();return q
 function searchBox(placeholder,changed){const input=node('input');input.type='search';input.placeholder=placeholder;input.setAttribute('aria-label',placeholder);input.value=search;input.addEventListener('input',()=>{search=input.value;changed();});return input;}
 function applySettings(data){if(!Number.isSafeInteger(data.revision)||data.revision<0)throw new Error('配置版本无效，请刷新页面并确认机器人服务已更新。');if(settings.revision!==null&&data.revision<settings.revision)return;settings={revision:data.revision,servers:data.servers,groups:data.groups};settingsLoaded=true;}
 async function refreshConfig(){applySettings(await request('/config'));}
-async function refreshOverview(){overview=await request('/overview');overviewLoaded=true;$('identity-bot').textContent=overview.selfId?'机器人 QQ '+overview.selfId:'未配置机器人 QQ';}
+function showConnection(data){const state=data.connection;const id=state?.selfId||data.selfId;$('identity-bot').textContent=id?'机器人 QQ '+id:'等待 QQ 登录';const root=$('bot-connection');root.replaceChildren();if(!state){add(root,badge('固定 QQ'),node('span','',id||'未配置'));return;}const recent=state.lastEventAt&&Date.now()-state.lastEventAt<90000;add(root,badge(state.online?(recent?'已连接':'QQ 在线 · 等待消息上报'):'未连接',state.online&&recent?'good':'warn'),node('span','',id?'QQ '+id+' · '+state.nickname:'等待 QQ 登录'));if(state.error)add(root,node('span','',state.error));add(root,node('span','', '检查 '+time(state.checkedAt)),node('span','', '最近上报 '+time(state.lastEventAt)));}
+async function refreshConnection(){if(connectionBusy||!csrf||document.hidden)return;connectionBusy=true;try{const data=await request('/connection');if(csrf)showConnection(data);}catch{if(csrf)$('bot-connection').textContent='无法刷新连接状态，请检查网络。';}finally{connectionBusy=false;}}
+async function refreshOverview(){overview=await request('/overview');overviewLoaded=true;showConnection(overview);}
+setInterval(refreshConnection,5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshConnection();});
 async function refresh(b){await busy(b,async()=>{await Promise.all([refreshConfig(),refreshOverview()]);render();showNotice('数据已刷新');});}
 async function start(session){csrf=session.csrf;username=session.username;$('initial').hidden=true;$('login-view').hidden=true;$('app').hidden=false;$('identity-name').textContent=username;render();try{await Promise.all([refreshConfig(),refreshOverview()]);render();}catch(error){formError(error);render();}}
 function selectTab(tab){current=tab;search='';opState='all';document.querySelectorAll('.tab').forEach(b=>{const active=b.dataset.tab===tab;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});$('content').setAttribute('aria-labelledby','tab-'+tab);render();}

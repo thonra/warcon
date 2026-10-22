@@ -58,7 +58,7 @@ async function setup() {
 			return { map: 'Bakurani', playerCount: 12, factions: ['Blue', 'Red', 'Green'] };
 		},
 		backupPath: join(folder, 'backups'),
-		selfId: '123456789',
+		selfId: () => '123456789',
 		inboxStats: () => ({ pending: 2 })
 	};
 	const api = new AdminApi(admin, bot, hooks);
@@ -98,6 +98,26 @@ async function setup() {
 }
 
 describe('admin API boundary', () => {
+	test('connection status is authenticated and reflects the live account without recreating the API', async () => {
+		const f = await setup();
+		expect((await f.call('/connection')).status).toBe(401);
+		await f.login();
+		let id = '123456789';
+		f.hooks.selfId = () => id;
+		f.hooks.connection = () => ({
+			selfId: id,
+			nickname: '机器人',
+			online: true,
+			checkedAt: 100,
+			lastEventAt: 99,
+			error: null
+		});
+		expect((await (await f.call('/overview')).json()).selfId).toBe(id);
+		id = '987654321';
+		const state = await (await f.call('/connection')).json();
+		expect(state.selfId).toBe(id);
+		expect(state.connection).toMatchObject({ selfId: id, online: true, lastEventAt: 99 });
+	});
 	test('fixed HTTPS origin accepts TLS termination over HTTP and issues Secure cookies', async () => {
 		const f = await setup();
 		f.hooks.publicOrigin = 'https://bot.example.test';

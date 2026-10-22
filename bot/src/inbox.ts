@@ -86,6 +86,15 @@ export class Inbox {
 			.query("UPDATE qq_inbox SET status=? WHERE key=? AND status='replying'")
 			.run(success ? 'sent' : 'reply_unknown', key);
 	}
+	/** A disconnected or changed QQ session must never replay its queued work or replies. */
+	discardSession(): void {
+		this.db.exec(
+			"UPDATE qq_inbox SET status='discarded', payload='', reply=NULL WHERE status IN ('pending','processing','done')"
+		);
+	}
+	hasWork(status: 'pending' | 'done'): boolean {
+		return !!this.db.query('SELECT 1 FROM qq_inbox WHERE status=? LIMIT 1').get(status);
+	}
 	stats(): Record<string, number> {
 		return Object.fromEntries(
 			this.db
@@ -99,7 +108,7 @@ export class Inbox {
 	prune(now: number): void {
 		// Expired incoming events are rejected before enqueue. Retain uncertainty for operator review.
 		this.db
-			.query("DELETE FROM qq_inbox WHERE status='sent' AND accepted_at<?")
+			.query("DELETE FROM qq_inbox WHERE status IN ('sent','discarded') AND accepted_at<?")
 			.run(now - 14 * 86400000);
 	}
 	close(): void {

@@ -1,0 +1,17 @@
+[
+	{
+		"groupId": "123456789",
+		"communityId": "wardogs-cn",
+		"serverId": "REPLACE_WITH_WARCON_SERVER_ID",
+		"serverName": "WardogsCN 社区服",
+		"timezone": "Asia/Shanghai",
+		"checkinPoints": 10,
+		"moveCost": 20,
+		"moveCooldownSeconds": 300,
+		"factions": {
+			"蓝": "REPLACE_WITH_BLUE_FACTION_NAME",
+			"红": "REPLACE_WITH_RED_FACTION_NAME",
+			"绿": "REPLACE_WITH_GREEN_FACTION_NAME"
+		}
+	}
+]

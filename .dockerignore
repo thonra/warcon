@@ -14,3 +14,9 @@ build
 !.git/refs/heads
 docs
 *.md
+/data
+/bot/groups.json
+**/*.sqlite
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/*.runtime-lock*

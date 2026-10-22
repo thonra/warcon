@@ -1,0 +1,19 @@
+services:
+  qq-bot:
+    build:
+      context: ..
+      dockerfile: bot/Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 90s
+    env_file: .env
+    environment:
+      QQ_BOT_HOST: 0.0.0.0
+      QQ_BOT_PORT: 3100
+      QQ_BOT_DB: /app/data/qq-bot.sqlite
+      QQ_BOT_MANAGED: '${QQ_BOT_MANAGED:-true}'
+    ports:
+      - '${QQ_BOT_PUBLISH_HOST:-127.0.0.1}:${QQ_BOT_PUBLISH_PORT:-3100}:3100'
+    volumes:
+      - qq-bot-data:/app/data
+volumes:
+  qq-bot-data:

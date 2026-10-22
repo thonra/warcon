@@ -20,3 +20,11 @@ vite.config.ts.timestamp-*
 
 # Playwright MCP output
 .playwright-mcp
+
+# QQ bot local configuration and SQLite state (back up through bot:admin backup).
+/bot/groups.json
+/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.runtime-lock*

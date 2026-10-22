@@ -27,6 +27,11 @@ way in:
 
 What is in the box:
 
+- **NapCat QQ self-service bot**: verified Steam binding, daily points, match queries and paid
+  team changes, with a Chinese administration UI and a separate SQLite database. See
+  [bot/README.md](bot/README.md) for setup, recovery and backups.
+- **Match evidence**: retained score changes, observed 20/40-point milestones and linked game
+  lifecycle events, with explicit coverage and association limits. See [docs/match-evidence.md](docs/match-evidence.md).
 - **Multiple servers** in one panel, each with its own encrypted RCON password.
 - **Organisations and invite links**: each clan or community is an organisation with its own
   servers, owners and members. An owner pastes an invite link into their Discord; whoever opens it

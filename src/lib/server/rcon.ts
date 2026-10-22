@@ -158,6 +158,14 @@ export class WardogsClient {
 		if (res.status < 200 || res.status >= 300) {
 			throw classifyGameError(method, path, res.status, res.statusText, parsed, res.headers);
 		}
+		// A proxy's HTML error page with HTTP 200 is not an acknowledgement of a game action.
+		// Keep empty 2xx bodies compatible with endpoints that acknowledge without a document.
+		if (
+			res.text.trim() &&
+			(parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+		) {
+			throw new GameError(502, 'The server did not return a JSON object.', 'bad_response');
+		}
 		return (parsed ?? {}) as T;
 	}
 

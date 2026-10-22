@@ -4,10 +4,19 @@
 // match has a page once it has ended.
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Env } from './env';
-import { matches, matchPlayers, samples, serverLive, servers } from './db/schema';
+import {
+	kills,
+	matches,
+	matchEvents,
+	matchPlayers,
+	samples,
+	serverLive,
+	servers
+} from './db/schema';
 import type { KillsOfMatch } from './feed';
 import { matchResult } from '$lib/leaderboard';
 import { saneScores } from '$lib/format';
+import { describeScoreHistory, historyScores, type MatchHistory } from '$lib/match-history';
 import {
 	awardsFor,
 	durationOf,
@@ -21,11 +30,7 @@ import {
 } from '$lib/matches';
 
 const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
-type Scores = { name: string; score: number }[];
-const scoresOf = (v: unknown): Scores | null =>
-	Array.isArray(v) && v.length
-		? (v as Scores).map((f) => ({ name: f.name, score: Number(f.score) }))
-		: null;
+const scoresOf = historyScores;
 
 const summary = (m: typeof matches.$inferSelect, players: number): MatchSummary => ({
 	id: m.id,
@@ -46,6 +51,69 @@ export const MATCHES_PAGE = 50;
 export const PUBLIC_MATCHES_PAGE = 20;
 /** How many of a match's kills a page shows at once. */
 export const MATCH_KILLS_PAGE = 100;
+/** Bound a detail response even when an imported match has an unusually long window. */
+export const MATCH_SCORE_LIMIT = 5000;
+export const MATCH_EVENT_LIMIT = 500;
+
+/**
+ * Old match rows carry no game identity. Only one distinct identity in this match's linked
+ * kills is usable evidence; matching merely by map or wall time can join adjacent rounds.
+ * The strict receipt window intentionally omits late lifecycle events rather than guess.
+ */
+async function lifecycleHistory(
+	env: Env,
+	m: typeof matches.$inferSelect & { endedAt: Date }
+): Promise<MatchHistory['feed']> {
+	const identities = await env.db
+		.selectDistinct({ instanceId: kills.instanceId, matchId: kills.matchId })
+		.from(kills)
+		.where(
+			and(
+				eq(kills.serverId, m.serverId),
+				eq(kills.matchRow, m.id),
+				sql`${kills.ts} >= ${m.startedAt} AND ${kills.ts} < ${m.endedAt}`,
+				sql`${kills.instanceId} <> '' AND ${kills.matchId} <> ''`,
+				m.map ? eq(kills.map, m.map) : undefined
+			)
+		)
+		.limit(2);
+	if (identities.length !== 1)
+		return { link: identities.length ? 'ambiguous' : 'unavailable', events: [], truncated: false };
+	const identity = identities[0];
+	const rows = await env.db
+		.select()
+		.from(matchEvents)
+		.where(
+			and(
+				eq(matchEvents.serverId, m.serverId),
+				eq(matchEvents.instanceId, identity.instanceId),
+				eq(matchEvents.matchId, identity.matchId),
+				sql`${matchEvents.ts} >= ${m.startedAt} AND ${matchEvents.ts} < ${m.endedAt}`,
+				sql`${matchEvents.type} IN ('match_state', 'match_ended')`,
+				m.map ? eq(matchEvents.map, m.map) : undefined
+			)
+		)
+		.orderBy(matchEvents.ts, matchEvents.seq, matchEvents.eventId)
+		.limit(MATCH_EVENT_LIMIT + 1);
+	return {
+		link: 'linked_kills',
+		truncated: rows.length > MATCH_EVENT_LIMIT,
+		events: rows.slice(0, MATCH_EVENT_LIMIT).map((e) => ({
+			source: 'game_feed',
+			eventId: e.eventId,
+			receivedAt: e.ts.toISOString(),
+			eventTime: e.eventTime !== null && Number.isFinite(e.eventTime) ? e.eventTime : null,
+			instanceId: e.instanceId,
+			matchId: identity.matchId,
+			type: e.type as 'match_state' | 'match_ended',
+			map: e.map,
+			state: e.state,
+			players: e.players,
+			winningFaction: e.winningFaction,
+			scores: scoresOf(e.scores)
+		}))
+	};
+}
 
 /**
  * The server's factions as its last look saw them, with colours and the scores of the match
@@ -120,7 +188,7 @@ export async function loadMatch(
 	if (!m || !m.endedAt) return null;
 	const finalScores = scoresOf(m.finalScores);
 	const span = killsOfMatch(matchId, m.startedAt, m.endedAt);
-	const [rows, points, [feed], live, [killCount]] = await Promise.all([
+	const [rows, rawPoints, [feed], live, [killCount], lifecycle] = await Promise.all([
 		env.db
 			.select()
 			.from(matchPlayers)
@@ -135,10 +203,14 @@ export async function loadMatch(
 				and(
 					eq(samples.serverId, serverId),
 					eq(samples.ok, true),
+					m.map ? eq(samples.map, m.map) : undefined,
+					m.experiences ? eq(samples.experiences, m.experiences) : undefined,
+					m.lighting ? eq(samples.lighting, m.lighting) : undefined,
 					sql`${samples.ts} >= ${m.startedAt} AND ${samples.ts} < ${m.endedAt}`
 				)
 			)
-			.orderBy(samples.ts),
+			.orderBy(samples.ts)
+			.limit(MATCH_SCORE_LIMIT + 1),
 		env.db
 			.select({ on: sql<boolean>`${servers.feedTokenHash} IS NOT NULL` })
 			.from(servers)
@@ -147,8 +219,10 @@ export async function loadMatch(
 		env.db.execute<{ n: string }>(sql`
 			SELECT COUNT(*) AS n FROM kills
 			 WHERE server_id = ${serverId} AND ts >= ${span.from} AND ts <= ${span.to}
-			   AND match_row = ${matchId}::bigint`)
+			   AND match_row = ${matchId}::bigint`),
+		lifecycleHistory(env, { ...m, endedAt: m.endedAt })
 	]);
+	const points = rawPoints.slice(0, MATCH_SCORE_LIMIT);
 	const lines: MatchLine[] = rows.map((r) => ({
 		steamId: r.steamId,
 		name: r.name,
@@ -192,6 +266,10 @@ export async function loadMatch(
 		factions,
 		lines,
 		timeline,
+		history: {
+			scores: describeScoreHistory(points, rawPoints.length > MATCH_SCORE_LIMIT),
+			feed: lifecycle
+		},
 		awards: awardsFor(lines, durationOf(match)),
 		kills: num(killCount?.n),
 		hasFeed: !!feed?.on

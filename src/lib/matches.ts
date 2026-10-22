@@ -2,6 +2,7 @@
 // maths that turns a match's player lines into awards and rates. Pure and client-safe; the
 // queries live in $lib/server/matches.ts.
 import { kdRatio, type MatchResult } from './leaderboard';
+import type { MatchHistory } from './match-history';
 
 /** One match as the list shows it. */
 export interface MatchSummary {
@@ -87,6 +88,8 @@ export interface MatchView {
 	factions: { name: string; colorHex: string | null }[];
 	lines: MatchLine[];
 	timeline: TimelinePoint[];
+	/** Retained observations and lifecycle events, with explicit source and coverage limits. */
+	history: MatchHistory;
 	awards: MatchAward[];
 	/** how many kills the feed recorded for it; 0 on a server without a feed */
 	kills: number;

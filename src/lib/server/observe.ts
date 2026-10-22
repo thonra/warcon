@@ -520,14 +520,19 @@ const liveKeyOf = (m: ServerMemory) =>
 	]);
 
 /** Changes that deserve an analytics sample between heartbeats. */
-const sampleKeyOf = (m: ServerMemory) =>
+const sampleKeyOf = (m: Pick<ServerMemory, 'ok' | 'status'>) =>
 	JSON.stringify([
 		m.ok,
 		m.status?.map,
 		m.status?.experiences,
 		m.status?.lighting,
 		m.status?.playerCount,
-		m.status?.maxPlayers
+		m.status?.maxPlayers,
+		// Faction order and colour are presentation details. A score-only change must be kept
+		// between heartbeats, including a threshold crossing used when reviewing a match.
+		m.status?.scores
+			.map(({ name, score }) => [name, score] as const)
+			.sort(([a], [b]) => a.localeCompare(b))
 	]);
 
 // ---- the observation ----------------------------------------------------------------------------

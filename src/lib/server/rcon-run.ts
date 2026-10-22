@@ -80,6 +80,10 @@ export async function runAction(
 	// What the trail keeps of the request: the action's own safe shape when it has one, else the
 	// params (writeAudit redacts by key name and secret-looking lines on insert).
 	const detail: unknown = def.audit ? safe(() => def.audit!(params), undefined) : params;
+	// Some game responses echo the delivered message; confidential whispers must not leak
+	// through the audit's result/error message after their request detail has been redacted.
+	const auditMessage = (message: string) =>
+		name === 'whisper' && params.confidential === true ? 'Confidential whisper.' : message;
 	const base = {
 		actor: user,
 		server: { id: server.id, name: server.name },
@@ -148,7 +152,7 @@ export async function runAction(
 				...base,
 				outcome: 'ok',
 				status: 200,
-				message: messageOf(result),
+				message: auditMessage(messageOf(result)),
 				detail: def.mutating
 					? meta && detail && typeof detail === 'object'
 						? { ...(detail as object), ...meta }
@@ -166,7 +170,7 @@ export async function runAction(
 					...base,
 					outcome: 'error',
 					status: err.status,
-					message: err.message,
+					message: auditMessage(err.message),
 					detail: def.mutating ? detail : undefined,
 					durationMs
 				});
@@ -201,7 +205,7 @@ export async function runAction(
 					...base,
 					outcome: 'error',
 					status: err.status,
-					message: err.message,
+					message: auditMessage(err.message),
 					detail,
 					durationMs
 				});

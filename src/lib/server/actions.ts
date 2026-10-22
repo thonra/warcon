@@ -634,6 +634,16 @@ export const ACTIONS: Record<string, ActionDef> = {
 		cap: 'chat.send',
 		mutating: true,
 		target: (p) => str(p.steamId, 32),
+		// One-time binding codes must not survive in audit detail (even a hash of a short code
+		// is guessable). Ordinary staff messages retain the existing audit trail.
+		audit: (p) =>
+			p.confidential === true
+				? {
+						steamId: str(p.steamId, 32),
+						confidential: true,
+						length: str(p.message, MAX_CHAT).length
+					}
+				: p,
 		run: (c, p) => {
 			const message = str(p.message, MAX_CHAT);
 			if (!message) {

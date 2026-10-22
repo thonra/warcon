@@ -1,5 +1,32 @@
 import { test, expect } from 'bun:test';
-import { classifyGameError, etagOf, parseRetryAfterMs } from './rcon';
+import { classifyGameError, etagOf, parseRetryAfterMs, WardogsClient } from './rcon';
+
+test('an HTTP 200 proxy page or scalar is not a successful JSON action response', async () => {
+	for (const text of ['<html>upstream failed</html>', 'null', '"OK"', '[]', '{broken']) {
+		const client = Object.create(WardogsClient.prototype) as WardogsClient;
+		client.raw = async () => ({ status: 200, statusText: 'OK', headers: {}, text });
+		await expect(
+			client.json('PATCH', '/v1/players/76561198000000001', { faction: 'Valkyra' })
+		).rejects.toMatchObject({ code: 'bad_response' });
+	}
+});
+
+test('JSON objects and empty mutation acknowledgements stay compatible', async () => {
+	const client = Object.create(WardogsClient.prototype) as WardogsClient;
+	client.raw = async () => ({
+		status: 200,
+		statusText: 'OK',
+		headers: {},
+		text: '{"message":"Moved"}'
+	});
+	expect(
+		await client.json<Record<string, unknown>>('PATCH', '/v1/players/76561198000000001')
+	).toEqual({ message: 'Moved' });
+	client.raw = async () => ({ status: 204, statusText: 'No Content', headers: {}, text: '' });
+	expect(
+		await client.json<Record<string, unknown>>('POST', '/v1/players/76561198000000001/kill')
+	).toEqual({});
+});
 
 // Shapes captured from live build ++Wardogs+Live-CL-499480 on 2026-09-11.
 test('a route the build does not serve becomes no_route with the route in the message', () => {

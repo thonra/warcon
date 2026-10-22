@@ -6,6 +6,7 @@
 	// the match's kill feed under it.
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import ScoreTimeline from '$lib/components/ScoreTimeline.svelte';
+	import MatchHistory from '$lib/components/MatchHistory.svelte';
 	import { fmtCash } from '$lib/cash';
 	import { expSetLabel, factionColor, fmtNum, fmtTime, mapName, prettify } from '$lib/format';
 	import { kdRatio } from '$lib/leaderboard';
@@ -127,6 +128,8 @@
 		<ScoreTimeline points={view.timeline} factions={view.factions} durationSeconds={length} />
 	</div>
 </div>
+
+<MatchHistory history={view.history} />
 
 {#if view.awards.length}
 	<div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">

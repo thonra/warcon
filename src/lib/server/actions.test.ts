@@ -6,6 +6,15 @@ mock.module('$env/dynamic/private', () => ({ env: process.env }));
 const { ACTIONS } = await import('./actions');
 const { GameError } = await import('./rcon');
 
+test('confidential whispers redact short codes without a guessable hash; normal chat remains audited', () => {
+	const params = { steamId: '76561198000000001', message: 'verify 123456', confidential: true };
+	const detail = ACTIONS.whisper.audit!(params);
+	expect(detail).toEqual({ steamId: params.steamId, confidential: true, length: 13 });
+	expect(JSON.stringify(detail)).not.toContain('123456');
+	const ordinary = { steamId: params.steamId, message: 'Please follow the rules.' };
+	expect(ACTIONS.whisper.audit!(ordinary)).toEqual(ordinary);
+});
+
 // The official console moves the faction and then kills the player so they respawn on the new
 // side; a kill that fails (no living character) is not an error.
 function fakeClient(killFails: boolean) {

@@ -7,6 +7,7 @@ import { inArray } from 'drizzle-orm';
 import type { Env } from './env';
 import { ApiError, forLog, str } from './http';
 import { writeAudit } from './audit';
+import { assertWorkspaceTarget } from './workspace';
 import {
 	accessibleServers,
 	getOrg,
@@ -40,6 +41,7 @@ export async function announceAccess(
 	user: SessionUser,
 	orgId: string
 ): Promise<{ org: OrgRow; visible: ServerSummary[] }> {
+	assertWorkspaceTarget(env, orgId);
 	const org = await getOrg(env, orgId);
 	const visible = org ? await accessibleServers(env, user, org.id) : [];
 	if (!org || !visible.length) throw new ApiError(404, 'Organisation not found.', 'not_found');

@@ -73,13 +73,13 @@
 	]);
 	let bannedBadge = $derived(
 		orgBan
-			? 'banned org-wide'
+			? 'banned across all servers'
 			: bannedServers.length === 1
 				? `banned on ${bannedServers[0]}`
 				: `banned on ${bannedServers.length} servers`
 	);
 	const SOURCE_LABEL: Record<PlayerBanView['source'], string> = {
-		org: 'org list',
+		org: 'shared list',
 		server: 'server list',
 		game: 'game list'
 	};
@@ -117,7 +117,7 @@
 	let recent = $derived(sessionSort.sorted(d.recent));
 	const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour12: false });
 
-	/** remove the player from an org list (unban across the org, or withdraw the reserved slot) */
+	/** remove the player from an shared list (unban across the org, or withdraw the reserved slot) */
 	async function orgRemove(kind: 'ban' | 'reserve') {
 		const what =
 			kind === 'ban'
@@ -364,8 +364,8 @@
 			<div class="callout border-l-danger">
 				<div class="mb-2">
 					<b
-						>{#if orgBan}Banned on every server in this organisation.{:else}Banned on {bannedServers.length}
-							of {d.orgServerCount} server{d.orgServerCount === 1 ? '' : 's'} in this organisation.{/if}</b
+						>{#if orgBan}Banned on every managed server.{:else}Banned on {bannedServers.length}
+							of {d.orgServerCount} server{d.orgServerCount === 1 ? '' : 's'} in this panel.{/if}</b
 					>
 				</div>
 				<div class="space-y-2">
@@ -380,7 +380,8 @@
 							{#if b.canUnban}<button
 									class="ml-auto btn btn-sm"
 									disabled={busy}
-									onclick={() => lift(b)}>{b.source === 'org' ? 'Unban org-wide' : 'Unban'}</button
+									onclick={() => lift(b)}
+									>{b.source === 'org' ? 'Unban across all servers' : 'Unban'}</button
 								>{/if}
 						</div>
 					{/each}
@@ -474,9 +475,9 @@
 			<div class="panel">
 				<span class="label-sm">Combat</span>
 				<p class="mb-3 text-[12.5px] text-mist-600">
-					From the game's kill feed, across the organisation's servers you can see. A team kill
-					counts as a kill here and a suicide as a death, and the feed only knows the time since it
-					was set up, so these differ from the scoreboard totals at the top.
+					From the game's kill feed, across the servers you can see. A team kill counts as a kill
+					here and a suicide as a death, and the feed only knows the time since it was set up, so
+					these differ from the scoreboard totals at the top.
 					<a
 						href="/server/{encodeURIComponent(data.server.id)}/kills?player={encodeURIComponent(
 							d.steamId
@@ -702,9 +703,9 @@
 		{#if d.orgLists.canReserve}
 			<div class="panel">
 				<div class="mb-3 flex items-center gap-2">
-					<span class="label-sm mb-0!">Organisation lists</span>
+					<span class="label-sm mb-0!">Shared lists</span>
 					<a
-						href="/orgs/{encodeURIComponent(data.server.orgId)}/reserved"
+						href="/manage/{encodeURIComponent(data.server.orgId)}/reserved"
 						class="ml-auto text-[12px] text-accent hover:underline">Open the lists →</a
 					>
 				</div>
@@ -713,7 +714,7 @@
 						{@const r = d.orgLists.reserve}
 						<Badge tone="accent">reserved slot</Badge>
 						<span class="min-w-0 flex-1 truncate text-mist-400"
-							>{r.reason || 'org-wide'}{#if r.member}
+							>{r.reason || 'across all servers'}{#if r.member}
 								· member{/if}{#if r.expiresAt}
 								· until {fmtTime(r.expiresAt)}{/if}</span
 						>
@@ -730,7 +731,7 @@
 							>
 						{/if}
 					{:else}
-						<span class="text-mist-400">No reserved slot from the organisation.</span>
+						<span class="text-mist-400">No reserved slot from the shared lists.</span>
 						<button class="ml-auto btn btn-sm" disabled={busy} onclick={orgReserve}
 							>Reserve a slot</button
 						>
@@ -758,8 +759,8 @@
 				<p class="text-[13px] text-mist-400">Nothing stands out.</p>
 			{/if}
 			<p class="note">
-				Advisory only, from the Steam Web API, recorded game stats, this organisation's ban lists
-				and the watchlist. It cannot see aim, position or input.
+				Advisory only, from the Steam Web API, recorded game stats, the shared ban lists and the
+				watchlist. It cannot see aim, position or input.
 				{#if !d.steamEnabled}<span class="text-warn"
 						>Steam lookup is off (set STEAM_API_KEY), so account age and VAC status are unknown.</span
 					>{/if}

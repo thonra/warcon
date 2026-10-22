@@ -3,6 +3,7 @@ import { apiJson, param, readJson, route } from '$lib/server/http';
 import { requireOrgRole, requireOwner } from '$lib/server/access';
 import { setBanReasons } from '$lib/server/ban-reasons';
 import { setSavedMessages } from '$lib/server/saved-messages';
+import { assertWorkspaceMutable } from '$lib/server/workspace';
 import {
 	deleteOrg,
 	setBanMessage,
@@ -20,6 +21,8 @@ export const PATCH = route(async (event) => {
 	const env = getEnv();
 	const body = await readJson(event.request);
 	const { org, user } = await requireOrgRole(env, event.locals, param(event, 'id'), 'owner');
+	// Check before choosing a settings branch: a mixed body must not hide a rename.
+	if (body.name !== undefined) assertWorkspaceMutable(env);
 	if (
 		body.serverLimit !== undefined ||
 		body.suspended !== undefined ||

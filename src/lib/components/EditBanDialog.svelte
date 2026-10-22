@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Change the reason or the expiry of a ban the panel holds, on the organisation's list or on a
+	// Change the reason or the expiry of a ban the panel holds, on the shared list or on a
 	// server's own. Who placed it and when stay as they are.
 	import { untrack } from 'svelte';
 	import { api, errorMessage } from '$lib/api';

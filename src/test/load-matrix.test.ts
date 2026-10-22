@@ -19,6 +19,8 @@ const APP = join(import.meta.dir, '..', 'routes', '(app)');
 const FROM_PARENT = [
 	'+layout.server.ts',
 	'orgs/+page.server.ts',
+	'orgs/[...legacy]/+page.server.ts',
+	'manage/+page.server.ts',
 	'servers/+page.server.ts',
 	'settings/+page.server.ts',
 	'users/+page.server.ts',
@@ -33,18 +35,18 @@ const MATRIX: Record<string, Policy> = {
 	'admin/+page.server.ts': 'site',
 	'admin/settings/+page.server.ts': 'site',
 	'admin/users/+page.server.ts': 'site',
-	'orgs/[id]/+layout.server.ts': 'lists',
-	'orgs/[id]/+page.server.ts': 'orgOwner',
-	'orgs/[id]/access/+page.server.ts': 'orgOwner',
-	'orgs/[id]/roles/+page.server.ts': 'orgOwner',
-	'orgs/[id]/seasons/+page.server.ts': 'orgOwner',
-	'orgs/[id]/messages/+page.server.ts': 'orgOwner',
-	'orgs/[id]/map-sets/+page.server.ts': 'orgOwner',
-	'orgs/[id]/bans/+page.server.ts': 'lists:ban',
-	'orgs/[id]/reserved/+page.server.ts': 'lists:reserve',
+	'manage/[id]/+layout.server.ts': 'lists',
+	'manage/[id]/+page.server.ts': 'orgOwner',
+	'manage/[id]/access/+page.server.ts': 'orgOwner',
+	'manage/[id]/roles/+page.server.ts': 'orgOwner',
+	'manage/[id]/seasons/+page.server.ts': 'orgOwner',
+	'manage/[id]/messages/+page.server.ts': 'orgOwner',
+	'manage/[id]/map-sets/+page.server.ts': 'orgOwner',
+	'manage/[id]/bans/+page.server.ts': 'lists:ban',
+	'manage/[id]/reserved/+page.server.ts': 'lists:reserve',
 	// "Group not found." is not a hidden answer: a group looked up before the role check fails it
-	'orgs/[id]/reserved/[groupId]/+page.server.ts': 'lists:reserve',
-	'orgs/[id]/players/+page.server.ts': 'lists',
+	'manage/[id]/reserved/[groupId]/+page.server.ts': 'lists:reserve',
+	'manage/[id]/players/+page.server.ts': 'lists',
 	'server/[id]/+layout.server.ts': 'cap:server.view',
 	'server/[id]/automation/+page.server.ts': 'cap:automation.manage',
 	'server/[id]/config/+page.server.ts': 'cap:server.view',
@@ -93,7 +95,7 @@ describe.skipIf(!hasTestDb)('page load permission matrix', () => {
 	for (const [file, policy] of Object.entries(MATRIX)) {
 		test(`${file} is ${policy}`, async () => {
 			const { load } = await import(join(APP, file));
-			const id = file.startsWith('orgs/') ? world.org.id : world.server.id;
+			const id = file.startsWith('manage/') ? world.org.id : world.server.id;
 			const got: Record<string, unknown> = {};
 			const want: Record<string, unknown> = {};
 			for (const who of SESSIONS) {

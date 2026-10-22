@@ -77,7 +77,7 @@
 		const label = e.name ? `${e.name} (${e.steamId})` : e.steamId;
 		if (
 			!(await confirmDialog(
-				`Unban ${label} across ${org.name}? The panel lifts the ban on every server it applied it to.`,
+				`Unban ${label} on all servers? The panel lifts the ban on every server it applied it to.`,
 				{ okLabel: 'Unban', danger: true }
 			))
 		)
@@ -102,8 +102,7 @@
 	<div>
 		<h2 class="text-lg font-semibold tracking-tight">Ban list</h2>
 		<p class="text-[13px] text-mist-400">
-			Bans kept by the organisation and pushed to every one of its servers. Bans added on a server
-			directly stay local to it.
+			Global bans pushed to every server. Bans added on a server directly stay local to it.
 		</p>
 	</div>
 	<span class="ml-auto inline-flex gap-1.5">
@@ -134,8 +133,8 @@
 
 {#if !lists.servers.length}
 	<div class="callout mb-4">
-		{org.name} has no servers yet, so there is nothing to push the list to. Entries are kept and applied
-		when a server is added.
+		No servers have been added yet, so there is nothing to push the list to. Entries are kept and
+		applied when a server is added.
 	</div>
 {/if}
 
@@ -235,7 +234,7 @@
 	<EditBanDialog
 		path="{path}/{encodeURIComponent(editing.steamId)}"
 		who={editing.name || editing.steamId}
-		placed={`Banned across ${org.name}${editing.addedByName ? ` by ${editing.addedByName}` : ''} on ${fmtTime(editing.addedAt)}.`}
+		placed={`Banned on all servers${editing.addedByName ? ` by ${editing.addedByName}` : ''} on ${fmtTime(editing.addedAt)}.`}
 		reason={editing.reason}
 		expiresAt={editing.expiresAt}
 		onclose={() => (editing = null)}
@@ -246,7 +245,7 @@
 {#if banning}
 	<BanDialog
 		orgId={org.id}
-		orgName={org.name}
+		orgName="All servers"
 		canOrg
 		banMessage={lists.banMessage}
 		reasons={lists.banReasons ?? []}

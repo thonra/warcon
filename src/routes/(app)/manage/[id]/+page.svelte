@@ -208,7 +208,7 @@
 			`@${m.username} is now ${role}.`
 		);
 	}
-	let accessHref = $derived(`/orgs/${encodeURIComponent(data.org.id)}/access`);
+	let accessHref = $derived(`/manage/${encodeURIComponent(data.org.id)}/access`);
 	/** "admin 2 · viewer 3": one number per role rather than one chip per server */
 	const grantSummary = (m: OrgMemberView) =>
 		data.roles
@@ -220,7 +220,7 @@
 	async function remove(m: OrgMemberView) {
 		if (
 			!(await confirmDialog(
-				`Remove @${m.username} from ${data.org.name}? Their access to its servers is removed; their account stays.`,
+				`Remove @${m.username} from management? Their server access is removed; their account stays.`,
 				{ okLabel: 'Remove', danger: true }
 			))
 		)
@@ -418,7 +418,6 @@
 	// --- site owner controls ---
 	// A number input binds a number, or null when blank (blank = the instance default).
 	let limitInput = $state<number | null>(null);
-	let suspendReason = $state('');
 	$effect(() => {
 		limitInput = data.org.customServerLimit;
 	});
@@ -428,23 +427,6 @@
 			'Server limit updated.',
 			false
 		);
-	}
-	async function suspend() {
-		if (
-			!(await confirmDialog(
-				`Suspend ${data.org.name}? Members lose access to its servers and its invite links stop working until you restore it.`,
-				{ okLabel: 'Suspend', danger: true }
-			))
-		)
-			return;
-		await run(
-			() => api('PATCH', orgPath, { suspended: true, reason: suspendReason.trim() }),
-			'Organisation suspended.',
-			false
-		);
-	}
-	function restore() {
-		void run(() => api('PATCH', orgPath, { suspended: false }), 'Organisation restored.', false);
 	}
 	const ALLOW_KEY = {
 		status: 'allowPublicStatus',
@@ -559,7 +541,7 @@
 					<thead>
 						<tr>
 							<SortHeader sort={memberSort} key="member">Member</SortHeader>
-							<SortHeader sort={memberSort} key="role">Org role</SortHeader>
+							<SortHeader sort={memberSort} key="role">Management role</SortHeader>
 							<SortHeader sort={memberSort} key="access">Server access</SortHeader>
 							<SortHeader sort={memberSort} key="joined">Joined</SortHeader>
 							<th></th>
@@ -632,13 +614,6 @@
 		{#if data.user.role === 'owner'}
 			<div class="panel border-accent/40">
 				<span class="label-sm">Site owner controls</span>
-				<div class="kv">
-					<span class="text-mist-400">Created</span>
-					<span
-						>{fmtTime(data.org.createdAt)}{#if data.org.createdBy}&nbsp;by @{data.org.createdBy
-								.username}{/if}</span
-					>
-				</div>
 				<div class="kv items-center">
 					<span class="text-mist-400">Server limit</span>
 					<span class="join">
@@ -661,7 +636,7 @@
 						.serverLimit}.
 				</p>
 				<div class="mt-3 border-t border-white/8 pt-3">
-					<span class="field-label">Public pages this organisation may switch on</span>
+					<span class="field-label">Available public pages</span>
 					{#each PUBLIC_FEATURES as feature (feature)}
 						<label class="flex items-center gap-2 py-1 text-[13px]">
 							<input
@@ -674,32 +649,9 @@
 						</label>
 					{/each}
 					<p class="note">
-						Allowed by default: the org's owners open each page per server. Unticking one closes
-						every such page in this organisation at once.
+						Allowed by default: management owners open each page per server. Unticking one closes
+						every page of that type at once.
 					</p>
-				</div>
-				<div class="mt-3 border-t border-white/8 pt-3">
-					{#if data.org.suspended}
-						<button type="button" class="btn btn-sm" onclick={restore} disabled={busy}
-							>Restore organisation</button
-						>
-					{:else}
-						<div class="join w-full">
-							<input
-								class="input"
-								type="text"
-								bind:value={suspendReason}
-								placeholder="Reason (shown to its owners)"
-								maxlength="300"
-							/>
-							<button
-								type="button"
-								class="btn btn-sm h-auto btn-danger"
-								onclick={suspend}
-								disabled={busy}>Suspend</button
-							>
-						</div>
-					{/if}
 				</div>
 			</div>
 		{/if}
@@ -708,15 +660,13 @@
 			<span class="label-sm">Public pages</span>
 			{#if anyAllowed}
 				<p class="mb-3 text-[13px] text-mist-400">
-					This organisation may open a {PUBLIC_FEATURES.filter((f) => allowed(data.org, f))
+					Servers may publish a {PUBLIC_FEATURES.filter((f) => allowed(data.org, f))
 						.map((f) => FEATURE_LABELS[f].toLowerCase())
 						.join(' and ')}. Switch each on per server from the server's <b>Settings</b> tab or its edit
 					dialog.
 				</p>
 			{:else}
-				<p class="mb-3 text-[13px] text-mist-400">
-					The site owner has closed the public pages for this organisation.
-				</p>
+				<p class="mb-3 text-[13px] text-mist-400">Public pages are disabled by the site owner.</p>
 			{/if}
 			<label class="block"
 				><span class="field-label">Discord invite shown on the public pages</span>
@@ -851,7 +801,7 @@
 			</div>
 			<p class="mb-3 text-[13px] text-mist-400">
 				For a Discord bot or a script: a bearer token for the JSON API with its own capabilities and
-				servers. It can never manage the organisation. See the README for the request shape.
+				servers. It cannot change management settings. See the README for the request shape.
 			</p>
 			{#each data.keys as k (k.id)}
 				<div class="kv items-start">
@@ -890,7 +840,7 @@
 				{#each data.lists.lists as l (l.id)}
 					<div class="kv items-center">
 						<a
-							href="/orgs/{encodeURIComponent(data.org.id)}/{l.kind === 'ban'
+							href="/manage/{encodeURIComponent(data.org.id)}/{l.kind === 'ban'
 								? 'bans'
 								: 'reserved'}"
 							class="text-accent hover:underline"
@@ -906,8 +856,7 @@
 				{/each}
 			</div>
 			<p class="note">
-				Pushed to every server in {data.org.name} (see the Servers tab). Server admins can add and remove
-				entries too.
+				Pushed to every server (see the Servers tab). Server admins can add and remove entries too.
 			</p>
 		</div>
 	</div>
@@ -966,8 +915,8 @@
 				>
 			</div>
 			<p class="note">
-				An <b>owner</b> link lets joiners do everything on every server and manage the org. Keep those
-				short-lived and single-use. What each server role may do is set on the Roles tab.
+				An <b>owner</b> link lets joiners do everything on every server and manage members and settings.
+				Keep those short-lived and single-use. What each server role may do is set on the Roles tab.
 			</p>
 			<div class="flex justify-end gap-2 pt-2">
 				<button type="button" class="btn" data-close onclick={() => (dialog = null)}>Cancel</button>
@@ -1090,7 +1039,7 @@
 				<div>
 					<span class="field-label">Servers</span>
 					<label class="flex items-center gap-2 text-[13px]"
-						><input type="checkbox" bind:checked={d.allServers} /> Every server in the organisation</label
+						><input type="checkbox" bind:checked={d.allServers} /> Every server</label
 					>
 					{#if !d.allServers}
 						<div class="mt-1 space-y-1 pl-5">
@@ -1147,8 +1096,7 @@
 			<div>
 				<span class="field-label">Servers</span>
 				<label class="flex items-center gap-2 text-[13px]"
-					><input type="checkbox" bind:checked={d.allServers} /> Every server in the organisation, including
-					ones added later</label
+					><input type="checkbox" bind:checked={d.allServers} /> Every server, including ones added later</label
 				>
 				{#if !d.allServers}
 					<div class="mt-1 space-y-1 pl-5">
@@ -1170,8 +1118,8 @@
 				</select>
 			</label>
 			<p class="note">
-				The org's ban list needs <b>Org ban list</b> and its reserved slots
-				<b>Org reserved slots</b>, each with every server; reading servers needs <b>View</b>. The
+				The global ban list needs <b>Shared ban list</b> and its reserved slots
+				<b>Shared reserved slots</b>, each with every server; reading servers needs <b>View</b>. The
 				token is shown once and stored hashed.
 			</p>
 			<div class="flex justify-end gap-2 pt-2">
@@ -1251,7 +1199,7 @@
 				<div>
 					<span class="field-label">Servers</span>
 					<label class="flex items-center gap-2 text-[13px]"
-						><input type="checkbox" bind:checked={d.allServers} /> Every server in the organisation</label
+						><input type="checkbox" bind:checked={d.allServers} /> Every server</label
 					>
 					{#if !d.allServers}
 						<div class="mt-1 space-y-1 pl-5">

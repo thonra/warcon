@@ -90,8 +90,8 @@
 		>
 	</div>
 	<p class="note">
-		For {org.name}'s public boards, each server's and the organisation's. Rank, player and kills
-		always show. The panel's Leaderboards tab and its CSV export keep every column and the board's
-		JSON keeps every number, so leaving a column out tidies the page without hiding anything.
+		For public leaderboards, per server and across all servers. Rank, player and kills always show.
+		The panel's Leaderboards tab and its CSV export keep every column and the board's JSON keeps
+		every number, so leaving a column out tidies the page without hiding anything.
 	</p>
 </div>

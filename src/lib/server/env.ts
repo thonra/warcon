@@ -10,6 +10,7 @@ import {
 	type SqlClient
 } from './db';
 import { authSecretProblem, relaySecretProblem } from './crypto';
+import { resolveWorkspaceId } from './workspace';
 
 export interface Env {
 	db: Db;
@@ -31,6 +32,8 @@ export interface Env {
 	APP_NAME?: string;
 	AUDIT_LOG_READS?: string;
 	ALLOW_DEMO_SERVER?: string;
+	/** Fixed management space. Startup resolves this after migrations; absent only in legacy test fixtures. */
+	WARCON_WORKSPACE_ID?: string;
 	/** Let anyone create an account and their own organisation from /sign-up. */
 	ALLOW_ORG_SIGNUP?: string;
 	/** Self-serve limits: orgs one person may create, servers one org may hold (site owner can raise per org). */
@@ -183,6 +186,13 @@ export async function initEnv(opts: { role?: Role } = {}): Promise<Env> {
 				`${pending} database migration(s) pending: run \`bun run db:migrate\` before starting the ${role}.`
 			);
 	}
+	let workspaceId: string;
+	try {
+		workspaceId = await resolveWorkspaceId(db, processEnv.WARCON_WORKSPACE_ID);
+	} catch (err) {
+		await client.close();
+		throw err;
+	}
 	const timescale = await hasTimescale(db);
 	console.log(`[warcon] database ready (timescaledb ${timescale ? 'on' : 'off'})`);
 	cached = {
@@ -203,6 +213,7 @@ export async function initEnv(opts: { role?: Role } = {}): Promise<Env> {
 		APP_NAME: processEnv.APP_NAME,
 		AUDIT_LOG_READS: processEnv.AUDIT_LOG_READS,
 		ALLOW_DEMO_SERVER: processEnv.ALLOW_DEMO_SERVER ?? 'true',
+		WARCON_WORKSPACE_ID: workspaceId,
 		ALLOW_ORG_SIGNUP: processEnv.ALLOW_ORG_SIGNUP,
 		MAX_ORGS_PER_USER: processEnv.MAX_ORGS_PER_USER,
 		METRICS_TOKEN: processEnv.METRICS_TOKEN,

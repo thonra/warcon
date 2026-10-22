@@ -159,8 +159,7 @@
 			<button
 				class="btn btn-sm {query.scope === 'org' ? 'btn-primary' : ''}"
 				onclick={() => set({ scope: 'org' })}
-				title={orgName ? `Every server of ${orgName}` : 'Every server of the organisation'}
-				>Organisation</button
+				title={orgName ? `Every server of ${orgName}` : 'All managed servers'}>All servers</button
 			>
 		</div>
 	{/if}

@@ -80,7 +80,7 @@
 				'ok',
 				8000
 			);
-			await goto(`/orgs/${encodeURIComponent(org.id)}/reserved`, { invalidateAll: true });
+			await goto(`/manage/${encodeURIComponent(org.id)}/reserved`, { invalidateAll: true });
 		} catch (err) {
 			toast(errorMessage(err), 'err');
 		} finally {

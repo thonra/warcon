@@ -29,7 +29,7 @@ const FAMILIES: { under: string; needs: RegExp; says: string }[] = [
 		says: 'requireServerCap (or the layout through parent())'
 	},
 	{
-		under: 'orgs/[id]/',
+		under: 'manage/[id]/',
 		needs: /requireOrgRole\(|requireListsRole\(/,
 		says: 'requireOrgRole or requireListsRole'
 	},

@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { Env } from './env';
 import { isDemoServer } from './env';
 import { ApiError } from './http';
+import { assertWorkspaceTarget } from './workspace';
 import {
 	CAPABILITIES,
 	CAPABILITY_INFO,
@@ -144,6 +145,7 @@ export async function requireOrgRole(
 ): Promise<{ org: OrgRow; role: OrgRole; user: SessionUser }> {
 	const user = requireUser(locals);
 	if (user.apiKey) throw keyForbidden();
+	assertWorkspaceTarget(env, orgId);
 	const org = await getOrg(env, orgId);
 	const role = org ? await orgRoleFor(env, user, orgId) : null;
 	if (!org || !role) throw new ApiError(404, 'Organisation not found.', 'not_found');
@@ -308,6 +310,7 @@ export async function requireListsRole(
 	need: 'any' | ListKind | 'owner'
 ): Promise<{ org: OrgRow; role: ListsRole; user: SessionUser }> {
 	const user = requireUser(locals);
+	assertWorkspaceTarget(env, orgId);
 	const org = await getOrg(env, orgId);
 	const role = org ? await listsRoleFor(env, user, orgId) : null;
 	if (!org || !role) throw new ApiError(404, 'Organisation not found.', 'not_found');

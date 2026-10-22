@@ -660,7 +660,7 @@
 			paste into the file on the host; the game reads them when it starts.{:else if feed && !feed.configured}Configure
 			writes the endpoint and a token into the config document; the game reads them at its next
 			restart (its scheduled one, or a manual restart).{:else if feed && !data.server.manager}An
-			owner of the organisation holds the token.{/if}
+			panel administrator holds the token.{/if}
 	</p>
 </div>
 

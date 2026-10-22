@@ -134,7 +134,7 @@
 						to the player and to anyone who can view a server's ban list. Leave the message as
 						<span class="font-mono text-mist-100">{DEFAULT_BAN_MESSAGE}</span> to send the reason
 						alone.
-						{#if !owner}Only an owner of the organisation can change it.{/if}
+						{#if !owner}Only a management owner can change it.{/if}
 					</p>
 				</div>
 				<div class="min-w-0 flex-1">

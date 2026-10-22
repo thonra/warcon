@@ -16,7 +16,7 @@
 		current: string | null;
 	} = $props();
 
-	let base = $derived(`/orgs/${encodeURIComponent(org.id)}/reserved`);
+	let base = $derived(`/manage/${encodeURIComponent(org.id)}/reserved`);
 	let own = $derived(lists.lists.find((l) => l.kind === 'reserve')?.entryCount ?? 0);
 	let making = $state(false);
 
@@ -31,7 +31,7 @@
 		href={base}
 		class="{pill} {current === null ? active : idle}"
 		aria-current={current === null ? 'page' : undefined}
-		>Organisation list <span class="text-mist-400 tabular">{own}</span></a
+		>Global list <span class="text-mist-400 tabular">{own}</span></a
 	>
 	{#each lists.groups as g (g.id)}
 		{@const s = groupState(g)}

@@ -86,13 +86,6 @@
 		if (form?.enabled) totp = null;
 		if (form?.backupCodes) backupCodes = form.backupCodes;
 		if (form?.recoveryKey) recoveryKey = form.recoveryKey;
-		if (form?.defaultOrg)
-			toast(
-				form.orgName
-					? `The panel now opens on ${form.orgName}.`
-					: 'The panel now opens on every organisation.',
-				'ok'
-			);
 		if (form?.error) toast(form.error, 'err');
 	});
 	$effect(() => {
@@ -597,26 +590,9 @@
 				<button class="btn" type="submit">Save</button>
 			</form>
 			<p class="note">
-				Your own SteamID64 (linking Steam above fills it in). Organisations that hand their members
-				a reserved slot use it; leave it blank to opt out.
+				Your own SteamID64 (linking Steam above fills it in). Administrators use it when assigning
+				reserved slots; leave it blank to opt out.
 			</p>
-
-			{#if data.orgs.length > 1}
-				<div class="mt-6 border-t border-white/8 pt-4">
-					<span class="label-sm">Default organisation</span>
-					<form method="post" action="?/defaultOrg" use:enhance class="join w-full">
-						<select class="input" name="orgId" value={data.defaultOrgId}>
-							<option value="">Every organisation</option>
-							{#each data.orgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-						</select>
-						<button class="btn" type="submit">Save</button>
-					</form>
-					<p class="note">
-						The dashboard, the server switcher and the Servers page open narrowed to this
-						organisation. The picker in the header changes it for one browser at a time.
-					</p>
-				</div>
-			{/if}
 		</div>
 	</div>
 
@@ -625,14 +601,14 @@
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<div class="space-y-2 text-[13px] leading-relaxed text-mist-400">
 				<p>
-					This removes your account, sign-in credentials, passkeys, sessions, server roles and
-					organisation memberships straight away. It cannot be undone.
+					This removes your account, sign-in credentials, passkeys, sessions and management access
+					straight away. It cannot be undone.
 				</p>
 				<p>
 					Audit entries you caused are kept for the record but stripped of your name, IP address and
-					browser. Organisations and servers you created stay with their other owners. You cannot
-					delete your account while you are the only owner of an organisation, or the only site
-					owner.
+					browser. Existing servers remain available to their other administrators. Any management
+					ownership that would be left without an owner must be transferred first. The last site
+					owner cannot delete their account.
 				</p>
 			</div>
 			<form

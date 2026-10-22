@@ -92,7 +92,7 @@
 	async function reset() {
 		if (
 			!(await confirmDialog(
-				`Put back the built-in six quick reasons? ${org.name}'s own are removed; bans already placed keep their reasons.`,
+				`Put back the built-in six quick reasons? Custom reasons are removed; bans already placed keep their reasons.`,
 				{ okLabel: 'Put them back' }
 			))
 		)
@@ -130,10 +130,10 @@
 
 	{#if open}
 		<p class="note mt-3.5 mb-4 max-w-[900px]">
-			The buttons under Reason when anyone in {org.name} places a ban. A button fills in its reason and,
-			when it has a length, sets Expires; with no length set, Expires stays as the admin has it. Everyone
+			The buttons under Reason when anyone places a ban. A button fills in its reason and, when it
+			has a length, sets Expires; with no length set, Expires stays as the admin has it. Everyone
 			who can open a server sees a ban's reason, so write it as something the player could be told.
-			{#if !owner}Only an owner of the organisation can change them.{/if}
+			{#if !owner}Only a management owner can change them.{/if}
 		</p>
 
 		{#if owner}

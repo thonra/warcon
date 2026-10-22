@@ -12,7 +12,7 @@
 
 	let { data }: { data: { server: ServerInfo; origin: string } } = $props();
 	let busy = $state(false);
-	let orgPage = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
+	let orgPage = $derived(`/manage/${encodeURIComponent(data.server.orgId)}`);
 
 	const KEY = { status: 'publicStatus', leaderboards: 'publicLeaderboards' } as const;
 	const PATH = { status: '', leaderboards: '/leaderboard' } as const;
@@ -20,7 +20,7 @@
 		status:
 			'Map, mode, scores, player count, join code and who is on with kills and deaths, refreshed every twenty seconds.',
 		leaderboards:
-			"The same board as the Leaderboards tab (this server, or the organisation's public servers), and a career page per player."
+			'The same board as the Leaderboards tab (this server, or all public servers), and a career page per player.'
 	};
 	const address = (feature: PublicFeature) =>
 		`${data.origin}/s/${encodeURIComponent(data.server.id)}${PATH[feature]}`;
@@ -119,8 +119,8 @@
 		{/each}
 		<p class="note">
 			A Discord status card can link to these pages: pick the links on the channel above. The
-			organisation's Discord invite, shown as a button on every public page, is set on the
-			<a href={orgPage} class="text-accent hover:underline">org page</a>.
+			community Discord invite, shown as a button on every public page, is set on the
+			<a href={orgPage} class="text-accent hover:underline">management page</a>.
 		</p>
 	{/if}
 </div>

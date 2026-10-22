@@ -13,8 +13,8 @@ req() { local jar=$1 m=$2 p=$3 body=${4:-}
   else curl -s -m 30 -b "$jar" -c "$jar" -X "$m" -H 'X-Requested-With: warcon' "$B$p"; fi; }
 form() { local jar=$1 p=$2 data=$3; curl -s -m 30 -o /dev/null -w '%{http_code} %{redirect_url}' -b "$jar" -c "$jar" -H "Origin: $B" -H 'Accept: text/html' -H 'Content-Type: application/x-www-form-urlencoded' --data "$data" "$B$p"; }
 pagecode() { curl -s -m 30 -o /dev/null -w '%{http_code}' -b "$1" "$B$2"; }
-# the header's Orgs link, as a signed-in person's dashboard renders it
-navorgs() { curl -s -m 30 -b "$1" "$B/" | grep -o '<a href="[^"]*" class="nav-pill[^"]*">Orgs</a>'; }
+# the header's Manage link, as a signed-in person's dashboard renders it
+navmanage() { curl -s -m 30 -b "$1" "$B/" | grep -o '<a href="[^"]*" class="nav-pill[^"]*">Manage</a>'; }
 
 echo "== health & first run"
 check health '"ok":true' "$(curl -s $B/api/health)"
@@ -26,28 +26,31 @@ check setup-weak-pw '400' "$(form $J1 '/setup?/password' 'username=james&passwor
 check setup-ok "303 $B/" "$(form $J1 '/setup?/password' 'username=james&password=correct-horse-battery&displayName=James')"
 check setup-twice '303' "$(form $J2 '/setup?/password' 'username=x&password=correct-horse-battery')"
 check me-owner 'role:"owner"' "$(curl -s -b $J1 $B/ | grep -o 'role:"owner"' | head -1)"
-# the site owner keeps the Orgs list, even while the panel holds one org
-check nav-orgs-site-owner 'href="/orgs"' "$(navorgs $J1)"
+# the site owner opens the fixed management space
+check nav-manage-site-owner 'href="/manage/' "$(navmanage $J1)"
 
 echo "== sign-in"
 check login-bad '401' "$(form $J2 '/sign-in?/password' 'username=james&password=wrong-password-1')"
 check login-ok '303' "$(form $J2 '/sign-in?/password' 'username=james&password=correct-horse-battery')"
 check login-page-authed-redirect '303' "$(curl -s -o /dev/null -w '%{http_code}' -b $J2 $B/sign-in)"
 
-echo "== orgs"
-check org-list-default '"slug":"default"' "$(req $J1 GET /api/orgs)"
-R=$(req $J1 POST /api/orgs '{"name":"Smoke Clan"}'); check org-create '"id"' "$R"
-ORG=$(echo "$R" | sed -E 's/.*"id":"([^"]+)".*/\1/')
-check org-list-created '"slug":"smoke-clan"' "$(req $J1 GET /api/orgs)"
-check org-members-owner '"username":"james"' "$(req $J1 GET /api/orgs/$ORG/members)"
+echo "== fixed management space"
+R=$(req $J1 GET /api/orgs); check workspace-default '"slug":"default"' "$R"
+ORG=$(echo "$R" | grep -o '"id":"[^"]*"' | head -1 | cut -d '"' -f 4)
+check workspace-create-closed 'workspace_fixed' "$(req $J1 POST /api/orgs '{"name":"Smoke Clan"}')"
+check workspace-rename-closed 'workspace_fixed' "$(req $J1 PATCH /api/orgs/$ORG '{"name":"Renamed"}')"
+check workspace-delete-closed 'workspace_fixed' "$(req $J1 DELETE /api/orgs/$ORG)"
+check scope-closed 'workspace_fixed' "$(req $J1 PUT /api/scope '{"orgId":null}')"
+check old-orgs-redirect '308' "$(pagecode $J1 /orgs)"
+check old-org-deep-redirect '308' "$(pagecode $J1 /orgs/$ORG/bans)"
 # grants point at the org's roles (built-ins viewer/operator/admin start every org); look their ids up once
 ROLES=$(req $J1 GET /api/orgs/$ORG/roles); check org-roles '"name":"operator"' "$ROLES"
 roleid() { echo "$ROLES" | grep -o "{\"id\":\"[^\"]*\",\"name\":\"$1\"" | sed -E 's/.*"id":"([^"]+)".*/\1/'; }
 RID_VIEWER=$(roleid viewer); RID_OPERATOR=$(roleid operator); RID_ADMIN=$(roleid admin)
 
 echo "== servers"
-check server-create-no-org 'orgId' "$(req $J1 POST /api/servers '{"name":"No Org","host":"demo","port":9,"scheme":"http","password":"demo"}')"
-R=$(req $J1 POST /api/servers "{\"orgId\":\"$ORG\",\"name\":\"Demo One\",\"host\":\"demo\",\"port\":1,\"scheme\":\"http\",\"password\":\"demo\",\"notes\":\"mock\"}"); check server-create '"id"' "$R"
+check server-create-wrong-space 'workspace_fixed' "$(req $J1 POST /api/servers '{"orgId":"wrong-space","name":"Wrong space","host":"demo","port":9,"scheme":"http","password":"demo"}')"
+R=$(req $J1 POST /api/servers "{\"name\":\"Demo One\",\"host\":\"demo\",\"port\":1,\"scheme\":\"http\",\"password\":\"demo\",\"notes\":\"mock\"}"); check server-create '"id"' "$R"
 SID=$(echo "$R" | sed -E 's/.*"id":"([^"]+)".*/\1/')
 R=$(req $J1 POST /api/servers "{\"orgId\":\"$ORG\",\"name\":\"Bad PW\",\"host\":\"demo\",\"port\":2,\"scheme\":\"http\",\"password\":\"wrong\"}"); SID2=$(echo "$R" | sed -E 's/.*"id":"([^"]+)".*/\1/')
 check org-server-count '"serverCount":2' "$(req $J1 GET /api/orgs)"
@@ -145,13 +148,13 @@ check bob-org-broadcast-denied "This needs 'Chat'" "$(req $J3 POST /api/orgs/$OR
 # saved messages: the org's owners write them, whoever may chat on a server reads them
 check saved-messages-save '"savedMessages":[{"name":"Restart soon"' "$(req $J1 PATCH /api/orgs/$ORG '{"savedMessages":[{"name":"Restart soon","text":"Restart in 5 minutes"}]}')"
 check saved-messages-owner '"name":"Restart soon"' "$(req $J1 GET /api/servers/$SID/saved-messages)"
-check messages-page '200' "$(pagecode $J1 /orgs/$ORG/messages)"
+check messages-page '200' "$(pagecode $J1 /manage/$ORG/messages)"
 check bob-saved-messages-denied "your role 'viewer' does not include it" "$(req $J3 GET /api/servers/$SID/saved-messages)"
 # map sets: the org's owners keep them, whoever may apply a server's config reads them there
 check map-set-save '"name":"Infantry"' "$(req $J1 POST /api/orgs/$ORG/map-sets '{"name":"Infantry","entries":[{"map":"Kavkazi","experiences":["Bakurani_KOTH_01","KOTH_InfantryOnly"],"lighting":"DayClear"}]}')"
 check map-set-bad-id 'is not a time of day id' "$(req $J1 POST /api/orgs/$ORG/map-sets '{"name":"Bad","entries":[{"map":"Kavkazi","lighting":"Day Clear"}]}')"
 check map-sets-owner '"experiences":["Bakurani_KOTH_01","KOTH_InfantryOnly"]' "$(req $J1 GET /api/servers/$SID/map-sets)"
-check map-sets-page '200' "$(pagecode $J1 /orgs/$ORG/map-sets)"
+check map-sets-page '200' "$(pagecode $J1 /manage/$ORG/map-sets)"
 check bob-map-sets-denied "your role 'viewer' does not include it" "$(req $J3 GET /api/servers/$SID/map-sets)"
 # Move alone: no kick, no kill, and no move to the side a player is on, which would only kill them
 check role-mover '"name":"Mover"' "$(req $J1 POST /api/orgs/$ORG/roles '{"name":"Mover","capabilities":["server.view","players.move"]}')"
@@ -173,13 +176,13 @@ BODY="{\"message\":\"hi\",\"serverIds\":[\"$SID2\"]}"
 check bob-org-broadcast-other 'Server not found' "$(req $J3 POST /api/orgs/$ORG/broadcast "$BODY")"
 check bob-saved-messages-ok '"text":"Restart in 5 minutes"' "$(req $J3 GET /api/servers/$SID/saved-messages)"
 check bob-saved-messages-save-denied 'Only an owner' "$(req $J3 PATCH /api/orgs/$ORG '{"savedMessages":[]}')"
-check bob-messages-page-404 '404' "$(pagecode $J3 /orgs/$ORG/messages)"
+check bob-messages-page-404 '404' "$(pagecode $J3 /manage/$ORG/messages)"
 check bob-map-sets-operator-denied "your role 'operator' does not include it" "$(req $J3 GET /api/servers/$SID/map-sets)"
 check bob-map-set-save-denied 'Only an owner' "$(req $J3 POST /api/orgs/$ORG/map-sets '{"name":"Mine","entries":[{"map":"Kavkazi"}]}')"
-check bob-map-sets-page-404 '404' "$(pagecode $J3 /orgs/$ORG/map-sets)"
+check bob-map-sets-page-404 '404' "$(pagecode $J3 /manage/$ORG/map-sets)"
 check bob-ban-denied "your role 'operator' does not include it" "$(req $J3 POST /api/servers/$SID/rcon/ban '{"steamId":"76561198100000106"}')"
 check bob-server-page '200' "$(pagecode $J3 /server/$SID)"
-check nav-orgs-no-list 'href="/orgs"' "$(navorgs $J3)"
+check nav-manage-no-list '0' "$(navmanage $J3 | wc -l | tr -d ' ')"
 check bob-audit-own-only '0' "$(req $J3 GET '/api/audit' | grep -o '"actorName":"james"' | wc -l | tr -d ' ')"
 check bob-audit-has-own '"actorName":"bob"' "$(req $J3 GET '/api/audit')"
 check user-disable '"ok":true' "$(req $J1 PATCH /api/users/$UID_BOB '{"disabled":true}')"
@@ -193,7 +196,7 @@ check bob-forced-redirect '/account?force=1' "$(curl -s -o /dev/null -w '%{redir
 check bob-change-pw "303 $B/" "$(form $J3 '/account?/password&force=1' 'current=another-long-password&next=bobs-final-password&again=bobs-final-password')"
 check bob-unlocked '"servers"' "$(req $J3 GET /api/servers)"
 check bob-org-owner '"ok":true' "$(req $J1 PATCH /api/orgs/$ORG/members/$UID_BOB '{"role":"owner"}')"
-check nav-orgs-owner "href=\"/orgs/$ORG\"" "$(navorgs $J3)"
+check nav-orgs-owner "href=\"/manage/$ORG\"" "$(navmanage $J3)"
 check demote-last-owner 'last owner' "$(req $J1 PATCH /api/users/$(req $J1 GET /api/users | grep -o '"id":"[^"]*","username":"james"' | sed -E 's/"id":"([^"]+)".*/\1/') '{"role":"member"}')"
 check user-delete '"ok":true' "$(req $J1 DELETE /api/users/$UID_BOB)"
 check bob-gone 'Sign in required' "$(req $J3 GET /api/servers)"
@@ -289,9 +292,9 @@ GC="{\"grants\":[{\"serverId\":\"$SID\",\"roleId\":\"$RID_ADMIN\"}]}"
 check carol-admin '"roleName":"admin"' "$(req $J1 PUT /api/users/$UID_CAROL/grants "$GC")"
 check lists-editor '"role":"editor"' "$(req $J5 GET /api/orgs/$ORG/lists)"
 check lists-editor-add '"steamId":"76561198100000503"' "$(req $J5 POST /api/orgs/$ORG/lists/ban/entries '{"steamId":"76561198100000503"}')"
-check lists-editor-orgs-link "/orgs/$ORG/bans" "$(curl -s -b $J5 $B/orgs)"
-check page-editor-bans '200' "$(pagecode $J5 "/orgs/$ORG/bans")"
-check page-editor-overview '403' "$(pagecode $J5 "/orgs/$ORG")"
+check lists-editor-manage-link "/manage/$ORG/bans" "$(curl -s -o /dev/null -w '%{redirect_url}' -b $J5 $B/manage)"
+check page-editor-bans '200' "$(pagecode $J5 "/manage/$ORG/bans")"
+check page-editor-overview '403' "$(pagecode $J5 "/manage/$ORG")"
 # dave: a role with the org's ban list alone opens that list and not the reserved-slot list
 R=$(req $J1 POST /api/orgs/$ORG/roles '{"name":"Org bans","capabilities":["server.view","lists.ban"]}'); RID_ORGBANS=$(echo "$R" | sed -E 's/.*"id":"([^"]+)".*/\1/')
 R=$(req $J1 POST /api/users '{"username":"dave","password":"daves-long-password","displayName":"Dave","role":"member","mustChangePassword":false}'); UID_DAVE=$(echo "$R" | sed -E 's/.*"id":"([^"]+)".*/\1/')
@@ -300,16 +303,16 @@ check dave-orgbans '"roleName":"Org bans"' "$(req $J1 PUT /api/users/$UID_DAVE/g
 J6=$(mktemp); form $J6 '/sign-in?/password' 'username=dave&password=daves-long-password' >/dev/null
 check orgbans-lists '"kinds":["ban"]' "$(req $J6 GET /api/orgs/$ORG/lists)"
 check orgbans-add '"steamId":"76561198100000504"' "$(req $J6 POST /api/orgs/$ORG/lists/ban/entries '{"steamId":"76561198100000504"}')"
-check orgbans-no-reserve 'Org reserved slots' "$(req $J6 POST /api/orgs/$ORG/lists/reserve/entries '{"steamId":"76561198100000504"}')"
-check page-orgbans-bans '200' "$(pagecode $J6 "/orgs/$ORG/bans")"
-check page-orgbans-reserved '403' "$(pagecode $J6 "/orgs/$ORG/reserved")"
-check orgbans-no-reserved-tab '0' "$(curl -s -b $J6 $B/orgs/$ORG/bans | grep -c "/orgs/$ORG/reserved")"
-check nav-orgs-one-list "href=\"/orgs/$ORG/bans\"" "$(navorgs $J6)"
+check orgbans-no-reserve 'Shared reserved slots' "$(req $J6 POST /api/orgs/$ORG/lists/reserve/entries '{"steamId":"76561198100000504"}')"
+check page-orgbans-bans '200' "$(pagecode $J6 "/manage/$ORG/bans")"
+check page-orgbans-reserved '403' "$(pagecode $J6 "/manage/$ORG/reserved")"
+check orgbans-no-reserved-tab '0' "$(curl -s -b $J6 $B/manage/$ORG/bans | grep -c "/manage/$ORG/reserved")"
+check nav-orgs-one-list "href=\"/manage/$ORG/bans\"" "$(navmanage $J6)"
 # the org's Players page offers each action to whoever may take it: dave bans, but keeps no notes,
 # so no Watch (wait for the worker to have seen players, or the table is empty for everyone)
-for i in $(seq 1 15); do R=$(curl -s -b $J1 "$B/orgs/$ORG/players"); [[ "$R" == *'Watch</button>'* ]] && break; sleep 2; done
+for i in $(seq 1 15); do R=$(curl -s -b $J1 "$B/manage/$ORG/players"); [[ "$R" == *'Watch</button>'* ]] && break; sleep 2; done
 check page-players-owner-watch 'Watch</button>' "$R"
-R=$(curl -s -b $J6 "$B/orgs/$ORG/players")
+R=$(curl -s -b $J6 "$B/manage/$ORG/players")
 check page-players-orgbans-ban 'Ban</button>' "$R"
 check page-players-orgbans-no-watch '0' "$(echo "$R" | grep -c 'atch</button>')"
 check page-players-orgbans-no-reserve '0' "$(echo "$R" | grep -c 'Reserve</button>')"
@@ -386,7 +389,7 @@ check trigger-firecount '"fireCount":' "$(req $J1 GET /api/servers/$SID/triggers
 req $J1 DELETE /api/servers/$SID/triggers/$TID2 >/dev/null; req $J1 DELETE /api/servers/$SID/triggers/$TID3 >/dev/null
 
 echo "== pages (owner)"
-for p in / /audit /admin/users /servers /orgs "/orgs/$ORG" "/orgs/$ORG/bans" "/orgs/$ORG/reserved" /account "/server/$SID" "/server/$SID/players" "/server/$SID/players/$P1" "/server/$SID/bans" "/server/$SID/automation" "/server/$SID/rotation" "/server/$SID/slots" "/server/$SID/config" "/server/$SID/log" "/audit?outcome=denied&q=kick"; do check "page $p" '200' "$(pagecode $J1 "$p")"; done
+for p in / /audit /admin/users /servers "/manage/$ORG" "/manage/$ORG/bans" "/manage/$ORG/reserved" /account "/server/$SID" "/server/$SID/players" "/server/$SID/players/$P1" "/server/$SID/bans" "/server/$SID/automation" "/server/$SID/rotation" "/server/$SID/slots" "/server/$SID/config" "/server/$SID/log" "/audit?outcome=denied&q=kick"; do check "page $p" '200' "$(pagecode $J1 "$p")"; done
 check page-unknown-server '404' "$(pagecode $J1 /server/nope)"
 check server-delete '"ok":true' "$(req $J1 DELETE /api/servers/$SID2)"
 check page-sessions 'this session' "$(curl -s -b $J1 $B/account)"

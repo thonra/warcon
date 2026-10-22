@@ -1,5 +1,5 @@
 <script lang="ts">
-	// This server's ban list: what the game server holds, with what the organisation's list and the
+	// This server's ban list: what the game server holds, with what the shared list and the
 	// server's own list contribute marked out, and the bans those lists still wait to place.
 	import { invalidateAll } from '$app/navigation';
 	import { api, rconGet, rconPost, errorMessage } from '$lib/api';
@@ -22,7 +22,7 @@
 	let id = $derived(data.server.id);
 	let admin = $derived(can(data.server.caps, 'bans.manage'));
 	let listsEdit = $derived(can(data.server.caps, 'lists.ban'));
-	let orgPath = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
+	let orgPath = $derived(`/manage/${encodeURIComponent(data.server.orgId)}`);
 
 	let listState = $state<ServerListsState | null>(null);
 	$effect(() => {
@@ -175,7 +175,7 @@
 	}
 
 	/**
-	 * Put a local ban on the org list. Owners import it (the panel then manages it here too);
+	 * Put a local ban on the shared list. Owners import it (the panel then manages it here too);
 	 * editors add it to the list, and this server's copy stays local.
 	 */
 	async function promoteSelected() {
@@ -193,7 +193,7 @@
 						steamId,
 						reason: ban?.reason ?? ''
 					});
-			toast(describeSync(res.sync, `${steamId} is on the organisation's ban list.`), 'ok', 8000);
+			toast(describeSync(res.sync, `${steamId} is on the shared ban list.`), 'ok', 8000);
 			await refreshAll();
 		} catch (err) {
 			toast(errorMessage(err), 'err');
@@ -224,7 +224,7 @@
 		const src = banSource(selectedBan);
 		if (src?.managed && src.scope === 'server') return liftHere(selectedBan);
 		const confirm = src?.managed
-			? `${selectedBan} is banned by the organisation's ban list, so the panel will ban them again at the next sync. Unban here anyway? To lift it everywhere, remove it from the organisation's ban list instead.`
+			? `${selectedBan} is banned by the shared ban list, so the panel will ban them again at the next sync. Unban here anyway? To lift it everywhere, remove it from the shared ban list instead.`
 			: `Unban ${selectedBan}?`;
 		await act(
 			'unban',
@@ -243,7 +243,7 @@
 
 <div class="mb-4 panel">
 	<div class="mb-2 flex flex-wrap items-center gap-2">
-		<span class="label-sm mb-0!">Organisation lists · {data.server.orgName}</span>
+		<span class="label-sm mb-0!">Shared lists</span>
 		<span class="ml-auto inline-flex flex-wrap gap-1.5">
 			{#if listState?.canEditOrgBans}
 				<a class="btn btn-sm" href="{orgPath}/bans">Ban list</a>
@@ -260,8 +260,8 @@
 			>
 		{:else}
 			<span class="text-mist-400"
-				>Managed by the organisation's owners and server admins; entries they push here are marked
-				<Badge tone="ok">org</Badge> below.</span
+				>Managed by the panel administrators and server admins; entries they push here are marked
+				<Badge tone="ok">shared</Badge> below.</span
 			>
 		{/if}
 		{#if pendingCount}<Badge tone="warn">{pendingCount} pending or failed</Badge>{/if}
@@ -298,7 +298,7 @@
 		<span class="inline-flex gap-1.5 sm:ml-auto">
 			{#if selectedBan && listState?.canEditOrgBans && !banSource(selectedBan)?.managed}
 				<button class="btn" disabled={busy} onclick={promoteSelected}
-					>{listState.orgOwner ? 'Promote to org list' : 'Add to org list'}</button
+					>{listState.orgOwner ? 'Promote to shared list' : 'Add to shared list'}</button
 				>
 			{/if}
 			<button class="btn" disabled={busy || !canEdit} onclick={() => (editing = true)}>Edit</button>
@@ -341,7 +341,7 @@
 							{#if b.source === 'local'}
 								<Badge>local</Badge>
 							{:else}
-								<Badge tone="ok">{b.source}</Badge>
+								<Badge tone="ok">{b.source === 'org' ? 'shared' : b.source}</Badge>
 							{/if}
 						</td>
 						<td class="font-mono text-[12px] whitespace-nowrap text-mist-400"
@@ -371,7 +371,7 @@
 		</table>
 	</div>
 	<p class="note">
-		<Badge tone="ok">org</Badge> bans come from the organisation's ban list and
+		<Badge tone="ok">shared</Badge> bans come from the shared ban list and
 		<Badge tone="ok">here</Badge> bans are on this server's own list. The panel enforces both itself:
 		a banned player is removed the moment they are seen on the server, and nothing is written to the game's
 		files, so an unban or an expiry takes effect at once. <Badge>local</Badge> bans are held by the game

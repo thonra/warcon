@@ -198,7 +198,7 @@
 			case 'seed_reward':
 				return canSlotHere || canSlotOrg
 					? ''
-					: 'Saving needs the Reserved slots capability (or Org reserved slots, for a slot on every server) as well as Automation.';
+					: 'Saving needs the Reserved slots capability (or Shared reserved slots, for a slot on every server) as well as Automation.';
 			case 'bounty':
 				return !data.feed
 					? 'Needs the kill feed, which is off on this server. Turn it on under Config.'
@@ -224,13 +224,13 @@
 	});
 	/**
 	 * what a Seeding reward may hand out: a slot on this server (Reserved slots) or on every server
-	 * (Org reserved slots)
+	 * (Shared reserved slots)
 	 */
 	let canSlotHere = $derived(can(data.server.caps, 'slots.manage'));
 	let canSlotOrg = $derived(can(data.server.caps, 'lists.reserve'));
 	/**
 	 * what a Kill distance rule may do: flag or kick (Kick), warn (Chat), kill and whisper (Kill and
-	 * Chat), ban on this server's list (Bans) or the org's (Org ban list)
+	 * Chat), ban on this server's list (Bans) or the org's (Shared ban list)
 	 */
 	let canKick = $derived(can(data.server.caps, 'players.kick'));
 	let canChat = $derived(can(data.server.caps, 'chat.send'));
@@ -702,7 +702,7 @@
 			minutes: n('minutes', 60),
 			windowDays: n('windowDays', 7),
 			slotDays: n('slotDays', kind === 'bounty' ? 1 : 7),
-			// a rule saved before the scope existed hands out org-wide slots; a new one, this server's
+			// a rule saved before the scope existed hands out across all servers slots; a new one, this server's
 			slotScope: c.scope === 'server' ? 'server' : t ? 'org' : canSlotHere ? 'server' : 'org',
 			characters: c.characters === 'ascii' || c.characters === 'off' ? c.characters : 'latin',
 			extraScripts: Array.isArray(c.extraScripts) ? (c.extraScripts as string[]) : [],
@@ -1950,7 +1950,7 @@
 						<legend class="field-label">Kick when the player is</legend>
 						<label class="flex items-center gap-2"
 							><input type="checkbox" bind:checked={f.bannedElsewhere} /> banned on another server in
-							this organisation</label
+							this panel</label
 						>
 						<label class="flex items-center gap-2"
 							><input type="checkbox" bind:checked={f.watchlist} /> on the watchlist</label
@@ -2638,7 +2638,7 @@
 											bind:group={f.banScope}
 											value="org"
 											disabled={!canBanOrg}
-										/> on every server in the organisation</label
+										/> on every managed server</label
 									>
 								</div>
 								<div class="flex flex-wrap items-center gap-2">
@@ -2811,7 +2811,7 @@
 							>
 							<label class="flex items-center gap-2 {canSlotOrg ? '' : 'text-mist-600'}"
 								><input type="radio" bind:group={f.slotScope} value="org" disabled={!canSlotOrg} />
-								on every server in the organisation</label
+								on every managed server</label
 							>
 						</div>
 					</fieldset>
@@ -2824,8 +2824,8 @@
 						With the box ticked, seed time stays pending until the server has filled with the player
 						still on; leave before that and it is forfeited. Unticked, every low minute counts as it
 						passes. A slot on this server only goes on this server's own reserved-slot list; one on
-						every server goes on the organisation's, which this server applies at once and the
-						others at their next sync. Either lapses on its own and can be earned again. Players who
+						every server goes on the shared list, which this server applies at once and the others
+						at their next sync. Either lapses on its own and can be earned again. Players who
 						already hold a reserved slot here are skipped.
 					</p>
 				{:else if f.kind === 'bounty'}
@@ -2906,7 +2906,7 @@
 									bind:group={f.slotScope}
 									value="org"
 									disabled={!canSlotOrg || f.bountyReward !== 'slot'}
-								/> on every server in the organisation</label
+								/> on every managed server</label
 							>
 						</div>
 						<label class="flex items-center gap-2"

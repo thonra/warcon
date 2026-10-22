@@ -91,10 +91,10 @@
 <div class="panel">
 	<span class="label-sm">Saved messages</span>
 	<p class="note mt-0 mb-4 max-w-[900px]">
-		Ready-made lines for everyone in {data.org.name} who can chat on a server: under Message to on the
-		Overview, in a whisper on the Players tab and on a player's page. Picking one fills the box, and they
-		can change it before it goes. Sent as written, up to {MAX_SAVED_MESSAGE_TEXT} characters, the most
-		the game takes in one line.
+		Ready-made lines for everyone who can chat on a server: under Message to on the Overview, in a
+		whisper on the Players tab and on a player's page. Picking one fills the box, and they can
+		change it before it goes. Sent as written, up to {MAX_SAVED_MESSAGE_TEXT} characters, the most the
+		game takes in one line.
 	</p>
 
 	<form

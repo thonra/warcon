@@ -296,7 +296,7 @@
 	let mapSets = $state<MapSet[] | null>(null);
 	let manager = $derived(data.server.manager);
 	let orgSetsPath = $derived(`/api/orgs/${encodeURIComponent(data.server.orgId)}/map-sets`);
-	let mapSetsHref = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}/map-sets`);
+	let mapSetsHref = $derived(`/manage/${encodeURIComponent(data.server.orgId)}/map-sets`);
 	async function loadMapSets() {
 		try {
 			mapSets = (
@@ -634,8 +634,7 @@
 				<a class="link" href={automationHref}>Rotation shuffle</a> rule on the Automation tab.{/if}
 			{#if mapSets && (mapSets.length || manager)}Map set puts one of {data.server.orgName}'s saved
 				rotations in place of this one, to apply like any other edit{#if manager}; Save as… keeps
-					this one as a set, and the organisation's <a class="link" href={mapSetsHref}>Map sets</a> tab
-					lists them{/if}.{/if}
+					this one as a set, and the <a class="link" href={mapSetsHref}>Map sets</a> tab lists them{/if}.{/if}
 		</p>
 	{/if}
 </div>

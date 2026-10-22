@@ -30,7 +30,7 @@
 		data
 	}: { data: { server: ServerInfo; owner: boolean; https: boolean; channels: WebhookView[] } } =
 		$props();
-	let orgPage = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
+	let orgPage = $derived(`/manage/${encodeURIComponent(data.server.orgId)}`);
 	let orgPath = $derived(`/api${orgPage}`);
 	let features = $derived(effectiveFeatures(data.server, data.server));
 	let label = $state('');
@@ -213,7 +213,7 @@
 		online, map, a score bar per faction and who is on each side; <b>pin it in Discord</b> so it
 		stays at the top), and <b>team kills</b>, one message each as the kill feed reports them. Use a
 		separate channel for each if you want them apart. Mirrors of admin actions (bans, kicks, trigger
-		actions, sign-ins) are set up on the <a class="link" href={orgPage}>org page</a>.
+		actions, sign-ins) are set up on the <a class="link" href={orgPage}>management page</a>.
 	</p>
 	{#if data.owner && !data.https}
 		<div class="callout mb-3 border-warn/30 bg-warn/12">
@@ -240,10 +240,8 @@
 					<div class="text-[12px] text-mist-400">
 						{carries(w)}{#if w.statusEnabled}
 							· {linksOf(w)}{/if}
-						{#if !w.serverIds}· every server in the organisation{:else if w.serverIds.length > 1}·
-							this and {w.serverIds.length - 1} other server{w.serverIds.length === 2
-								? ''
-								: 's'}{/if}
+						{#if !w.serverIds}· every managed server{:else if w.serverIds.length > 1}· this and {w
+								.serverIds.length - 1} other server{w.serverIds.length === 2 ? '' : 's'}{/if}
 						{#if w.lastError}<div class="text-danger">{w.lastError}</div>
 							<div>{hintFor(w.lastError)}</div>{:else if w.statusSentAt}· updated {fmtTime(
 								w.statusSentAt
@@ -255,7 +253,7 @@
 						>Edit</button
 					>
 				{:else}
-					<a class="btn btn-sm shrink-0 btn-ghost" href={orgPage}>Edit on the org page</a>
+					<a class="btn btn-sm shrink-0 btn-ghost" href={orgPage}>Edit in Management</a>
 				{/if}
 			</div>
 		{:else}

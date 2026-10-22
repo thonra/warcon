@@ -82,10 +82,10 @@
 	<div class="callout mb-4 flex flex-wrap items-center gap-3">
 		<span
 			><b>{mine.length} {noun}{mine.length === 1 ? '' : 's'}</b> found on your servers that
-			{mine.length === 1 ? 'is' : 'are'} not on the organisation list.
+			{mine.length === 1 ? 'is' : 'are'} not on the global list.
 			{#if owner}Import {mine.length === 1 ? 'it' : 'them'} to manage
 				{mine.length === 1 ? 'it' : 'them'} from here and apply
-				{mine.length === 1 ? 'it' : 'them'} everywhere.{:else}An owner of {org.name} can import them.{/if}</span
+				{mine.length === 1 ? 'it' : 'them'} everywhere.{:else}A management owner can import them.{/if}</span
 		>
 		{#if owner}
 			<button class="ml-auto btn btn-sm" onclick={open}>Review and import</button>
@@ -96,10 +96,9 @@
 {#if importing}
 	<Modal title="Import {noun}s from your servers" wide onclose={() => (importing = false)}>
 		<p class="mb-3 text-[13px] text-mist-400">
-			These {noun}s exist on the servers below but not on the organisation list. Importing puts them
-			on the list, marks them as managed where they already exist, and applies them to every other
-			server in {org.name}. Removing an imported entry later lifts it everywhere the panel manages
-			it.
+			These {noun}s exist on the servers below but not on the global list. Importing puts them on
+			the list, marks them as managed where they already exist, and applies them to every other
+			server. Removing an imported entry later lifts it everywhere the panel manages it.
 		</p>
 		{#if mine.length > 5}
 			<input

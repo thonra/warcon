@@ -32,15 +32,8 @@
 
 	const chatOn = (s: Server) => can(s.caps, 'chat.send');
 
-	/** the organisations with a server the person may chat on, in the page's order */
-	let orgs = $derived.by(() => {
-		const seen = new Map<string, string>();
-		for (const s of servers) if (chatOn(s) && !seen.has(s.orgId)) seen.set(s.orgId, s.orgName);
-		return [...seen].map(([id, name]) => ({ id, name }));
-	});
-	// svelte-ignore state_referenced_locally
-	let org = $state(orgs.find((o) => o.id === orgId)?.id ?? orgs[0]?.id ?? '');
-	let orgName = $derived(orgs.find((o) => o.id === org)?.name ?? '');
+	// Fixed workspace association; each server still requires Chat permission.
+	let org = $derived(orgId ?? servers.find(chatOn)?.orgId ?? '');
 	let offered = $derived(servers.filter((s) => s.orgId === org && chatOn(s)));
 	/** the org's servers the page shows on which the person may not chat */
 	let withheld = $derived(servers.filter((s) => s.orgId === org && !chatOn(s)).length);
@@ -51,14 +44,6 @@
 	let busy = $state(false);
 	/** how each server took the last send, by id */
 	let results = $state<Record<string, AnnounceResult>>({});
-
-	/** Another organisation starts over: all of its servers ticked, no answers. */
-	function chooseOrg(id: string) {
-		org = id;
-		results = {};
-		picked.clear();
-		for (const s of offered) picked.add(s.id);
-	}
 
 	let chosen = $derived(offered.filter((s) => picked.has(s.id)));
 	let allPicked = $derived(offered.length > 0 && chosen.length === offered.length);
@@ -129,19 +114,6 @@
 			void send();
 		}}
 	>
-		{#if orgs.length > 1}
-			<label class="block"
-				><span class="field-label">Organisation</span>
-				<select
-					class="input"
-					value={org}
-					disabled={busy}
-					onchange={(e) => chooseOrg(e.currentTarget.value)}
-				>
-					{#each orgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-				</select>
-			</label>
-		{/if}
 		{#if via}
 			<div>
 				<SavedMessages
@@ -173,7 +145,7 @@
 					<label
 						class="flex cursor-pointer items-center gap-2.5 border-b border-white/8 px-3 py-2 text-[13px] text-mist-400"
 						><input type="checkbox" checked={allPicked} disabled={busy} onchange={pickAll} />
-						Every server of {orgName} you may chat on</label
+						Every server you may chat on</label
 					>
 				{/if}
 				{#each offered as s (s.id)}
@@ -210,8 +182,8 @@
 			</div>
 			{#if withheld}
 				<p class="note">
-					{withheld === 1 ? 'One server' : `${withheld} servers`} of {orgName} not listed: your role there
-					does not include Chat.
+					{withheld === 1 ? 'One server' : `${withheld} servers`} not listed: your role there does not
+					include Chat.
 				</p>
 			{/if}
 		</div>

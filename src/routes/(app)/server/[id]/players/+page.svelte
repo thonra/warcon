@@ -17,7 +17,7 @@
 	let view = $state<'online' | 'teams' | 'past'>('online');
 	/** the Teams view stays mounted once opened, so its plan survives a look at the other views */
 	let teamsOpened = $state(false);
-	/** may the user write to the organisation's lists? Decides the ban dialog's default scope. */
+	/** may the user write to the shared lists? Decides the ban dialog's default scope. */
 	let listState = $state<ServerListsState | null>(null);
 
 	let all = $state<Player[]>([]);
@@ -158,7 +158,7 @@
 			{#if listState?.canEditOrgBans || listState?.canEditOrgSlots}Everyone who has ever joined is
 				under
 				<a
-					href="/orgs/{encodeURIComponent(data.server.orgId)}/players?server={encodeURIComponent(
+					href="/manage/{encodeURIComponent(data.server.orgId)}/players?server={encodeURIComponent(
 						id
 					)}"
 					class="text-accent hover:underline">Players seen</a

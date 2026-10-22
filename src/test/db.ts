@@ -49,10 +49,15 @@ async function create(name: string): Promise<Env> {
 	});
 	delete process.env.METRICS_TOKEN;
 	delete process.env.SETUP_TOKEN;
+	delete process.env.WARCON_WORKSPACE_ID;
 	// initEnv rather than a hand-built Env: route handlers read getEnv(), and this is the only
 	// thing that sets it. It applies the migrations from ./drizzle.
 	const { initEnv } = await import('$lib/server/env');
-	return initEnv({ role: 'all' });
+	const env = await initEnv({ role: 'all' });
+	// The permission fixtures deliberately model several unrelated organisations. Production
+	// startup always selects one; workspace-specific tests opt in and restore this shared Env.
+	delete env.WARCON_WORKSPACE_ID;
+	return env;
 }
 
 /** The migrated test database, as the Env every server function takes. */

@@ -8,12 +8,14 @@ import { writeAudit } from './audit';
 import { keyForbidden, loginLockSeconds, noteLoginFailure, type SessionUser } from './access';
 import { createUser, userCount, validatePassword, validateUsername } from './users';
 import { organizations } from './db/schema';
+import { assertWorkspaceMutable } from './workspace';
 
-export const orgSignupEnabled = (env: Pick<Env, 'ALLOW_ORG_SIGNUP'>) =>
-	flag(env.ALLOW_ORG_SIGNUP, false);
+export const orgSignupEnabled = (env: Pick<Env, 'ALLOW_ORG_SIGNUP' | 'WARCON_WORKSPACE_ID'>) =>
+	!env.WARCON_WORKSPACE_ID && flag(env.ALLOW_ORG_SIGNUP, false);
 
 /** How many more orgs this user may create; null means unlimited. */
 export async function orgsRemaining(env: Env, user: SessionUser): Promise<number | null> {
+	if (env.WARCON_WORKSPACE_ID) return 0;
 	if (user.role === 'owner') return null;
 	if (!orgSignupEnabled(env)) return 0;
 	const [row] = await env.db
@@ -25,6 +27,7 @@ export async function orgsRemaining(env: Env, user: SessionUser): Promise<number
 
 export async function assertMayCreateOrg(env: Env, user: SessionUser): Promise<void> {
 	if (user.apiKey) throw keyForbidden();
+	assertWorkspaceMutable(env);
 	const left = await orgsRemaining(env, user);
 	if (left === null || left > 0) return;
 	if (!orgSignupEnabled(env))

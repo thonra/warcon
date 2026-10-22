@@ -50,7 +50,7 @@
 				toast(`${res.group.name} made. Add its players, then switch it on.`, 'ok', 8000);
 				onclose();
 				await goto(
-					`/orgs/${encodeURIComponent(org.id)}/reserved/${encodeURIComponent(res.group.id)}`
+					`/manage/${encodeURIComponent(org.id)}/reserved/${encodeURIComponent(res.group.id)}`
 				);
 				return;
 			}
@@ -103,7 +103,7 @@
 					<input type="radio" class="mt-1" value={true} bind:group={every} />
 					<span
 						><b>Every server</b><span class="block text-[12.5px] text-mist-400"
-							>All of {org.name}'s servers, and any added later.</span
+							>All servers, and any added later.</span
 						></span
 					>
 				</label>
@@ -122,7 +122,7 @@
 							/>{s.name}</label
 						>
 					{:else}
-						<span class="text-[12.5px] text-mist-400">{org.name} has no servers yet.</span>
+						<span class="text-[12.5px] text-mist-400">No servers have been added yet.</span>
 					{/each}
 				</div>
 			</fieldset>

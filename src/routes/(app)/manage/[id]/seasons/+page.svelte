@@ -128,8 +128,8 @@
 			{/each}
 		</div>
 		<p class="note">
-			For {data.org.name}'s leaderboards, in the panel and on the public pages. Anyone looking can
-			still pick another season or range on the board.
+			For leaderboards, in the panel and on the public pages. Anyone looking can still pick another
+			season or range on the board.
 		</p>
 	</div>
 
@@ -160,7 +160,7 @@
 	</div>
 
 	<div class="panel">
-		<span class="label-sm">{data.org.name} seasons</span>
+		<span class="label-sm">Seasons</span>
 		<div class="table-wrap">
 			<table>
 				<thead><tr><th>Name</th><th>Starts</th><th></th><th></th></tr></thead>

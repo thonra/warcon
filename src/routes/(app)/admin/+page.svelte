@@ -129,7 +129,7 @@
 	>
 </div>
 
-<div class="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-6">
+<div class="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
 	<div class={TILE}>
 		<span class="caps text-mist-400">Players online</span>
 		<div class={BIG}>{fmtNum(players)}</div>
@@ -145,11 +145,7 @@
 				· {fmtNum(unobserved)} never observed{/if}
 		</div>
 	</div>
-	<div class={TILE}>
-		<span class="caps text-mist-400">Organisations</span>
-		<div class={BIG}>{fmtNum(live.fleet.orgs)}</div>
-		<div class={SUB}>{fmtNum(live.fleet.orgsWeek)} joined in the last 7 days</div>
-	</div>
+
 	<div class={TILE}>
 		<span class="caps text-mist-400">Users</span>
 		<div class={BIG}>{fmtNum(live.fleet.users)}</div>

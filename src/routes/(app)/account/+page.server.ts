@@ -4,8 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { discordEnabled, getEnv } from '$lib/server/env';
 import { normalizeError, str } from '$lib/server/http';
 import { writeAudit } from '$lib/server/audit';
-import { requireUser, userOrgs } from '$lib/server/access';
-import { clearScopeCookie } from '$lib/server/scope';
+import { requireUser } from '$lib/server/access';
 import { auditSelfDelete } from '$lib/server/erasure';
 import {
 	getUser,
@@ -13,7 +12,6 @@ import {
 	listPasskeys,
 	listSessions,
 	revokeSession,
-	setDefaultOrg,
 	setMustChangePassword,
 	setSteamId,
 	unlinkProvider,
@@ -47,7 +45,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		/** false for accounts created through Discord, Steam or a passkey: they set a password rather than change one */
 		hasPassword: methods.password,
 		steamId: row?.steamId ?? '',
-		defaultOrgId: row?.defaultOrgId ?? '',
 		passkeys,
 		methods,
 		enrolment,
@@ -62,29 +59,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 const wrongPassword = (message: string) => /INVALID_PASSWORD|invalid password/i.test(message);
 
 export const actions: Actions = {
-	/** Pick the organisation the panel opens scoped to; blank means every org. */
-	defaultOrg: async ({ request, locals, cookies }) => {
-		const env = getEnv();
-		const user = requireUser(locals);
-		const raw = str((await request.formData()).get('orgId'), 64);
-		const orgs = await userOrgs(env, user);
-		const org = raw ? orgs.find((o) => o.id === raw) : null;
-		if (raw && !org) return fail(404, { error: 'Organisation not found.' });
-		await setDefaultOrg(env, user.id, org?.id ?? null);
-		// The new default should take effect at once, so any browser-level override is dropped.
-		clearScopeCookie(cookies);
-		await writeAudit(env, request, {
-			actor: user,
-			category: 'user',
-			action: 'account.default_org',
-			outcome: 'ok',
-			target: org?.name ?? '',
-			message: org ? `Default organisation: ${org.name}` : 'Default organisation cleared'
+	/** Old preference forms cannot change the fixed management scope. */
+	defaultOrg: async ({ locals }) => {
+		requireUser(locals);
+		return fail(403, {
+			error: 'This panel uses a fixed management space; changing the default is unavailable.'
 		});
-		return { defaultOrg: true, orgName: org?.name ?? '' };
 	},
 
-	/** Link (or clear) the SteamID64 an organisation may hand a reserved slot to. */
+	/** Link (or clear) the SteamID64 used for reserved slots. */
 	steam: async ({ request, locals }) => {
 		const env = getEnv();
 		const user = requireUser(locals);

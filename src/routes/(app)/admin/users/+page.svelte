@@ -45,15 +45,10 @@
 		role: { by: (u) => u.role },
 		status: { by: status },
 		signIn: { by: (u) => (u.authComplete ? 1 : 0) },
-		orgs: { by: (u) => u.orgs.length, dir: 'desc' },
 		access: { by: (u) => (u.role === 'owner' ? Infinity : u.grants.length), dir: 'desc' },
 		lastLogin: { by: (u) => u.lastLoginAt, dir: 'desc' }
 	});
-	let rows = $derived(
-		sort.sorted(
-			data.users.filter((u) => matches(search, u.name, u.username, ...u.orgs.map((o) => o.orgName)))
-		)
-	);
+	let rows = $derived(sort.sorted(data.users.filter((u) => matches(search, u.name, u.username))));
 
 	const openEdit = (u: UserView | null) => {
 		dialog = {
@@ -167,20 +162,16 @@
 
 <div class="callout">
 	<b>Every account on this panel.</b> A site <b>owner</b> runs the whole panel and can do everything
-	on every server. A <b>member</b> belongs to one or more
-	<a href="/orgs" class="text-accent underline">organisations</a>, usually by opening an invite
-	link, and sees the servers they are granted there with one of that organisation's roles. Every org
-	starts with <b>viewer</b> (read-only), <b>operator</b> (kick, kill, whisper, broadcast, map and
-	match control, live rotation edits, notes) and <b>admin</b> (everything on the server); its owners can
-	change what those mean and add roles of their own. Granting a server here also makes them a member of
-	its organisation.
+	on every server. A <b>member</b> sees servers they have been granted access to, with a role that
+	defines their permitted actions. Manage membership and role definitions in
+	<a href="/manage" class="text-accent underline">Management</a>.
 </div>
 
 <div class="mb-3 flex flex-wrap items-center gap-2">
 	<input
 		class="input w-full sm:w-80"
 		type="search"
-		placeholder="Filter by name, username, organisation…"
+		placeholder="Filter by name or username…"
 		aria-label="Filter users"
 		bind:value={search}
 	/>
@@ -200,7 +191,6 @@
 				<SortHeader {sort} key="role">Role</SortHeader>
 				<SortHeader {sort} key="status">Status</SortHeader>
 				<SortHeader {sort} key="signIn">Sign-in</SortHeader>
-				<SortHeader {sort} key="orgs">Organisations</SortHeader>
 				<SortHeader {sort} key="access">Server access</SortHeader>
 				<SortHeader {sort} key="lastLogin">Last login</SortHeader>
 				<th></th>
@@ -227,20 +217,7 @@
 							{#if !u.authComplete}<Badge tone="warn">incomplete</Badge>{/if}
 						</div>
 					</td>
-					<td>
-						{#if u.orgs.length}
-							<div class="flex flex-wrap gap-1.5">
-								{#each u.orgs as o (o.orgId)}
-									<span
-										class="inline-flex items-center gap-1.5 rounded-[2px] border border-black bg-ink-950 py-0.5 pr-1 pl-2 text-[12px]"
-										>{o.orgName} <RoleBadge role={o.role} /></span
-									>
-								{/each}
-							</div>
-						{:else}
-							<span class="text-mist-600">none</span>
-						{/if}
-					</td>
+
 					<td>
 						{#if u.role === 'owner'}
 							<span class="text-mist-400">all servers (site owner)</span>
@@ -353,7 +330,7 @@
 			rows={data.servers.map((s) => ({
 				id: s.id,
 				label: s.name,
-				sub: data.orgs.length > 1 ? `${s.orgName} · ${s.host}:${s.port}` : `${s.host}:${s.port}`,
+				sub: `${s.host}:${s.port}`,
 				roles: data.rolesByOrgId[s.orgId] ?? []
 			}))}
 			bind:grants={d.grants}

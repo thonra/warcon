@@ -53,37 +53,23 @@
 		  };
 	let dialog = $state<Dialog | null>(null);
 	let busy = $state(false);
-	// One org column / group header only once there is more than one org to tell apart.
-	let multiOrg = $derived(data.ownedOrgs.length > 1);
 
 	let q = $state('');
-	let orgFilter = $state('');
 	const sort = new TableSort<(typeof data.managed)[number]>({
 		name: { by: (s) => s.name },
-		org: { by: (s) => s.orgName },
 		target: { by: (s) => `${s.host}:${s.port}` },
 		order: { by: (s) => s.sortOrder }
 	});
 	let shown = $derived(
-		sort.sorted(
-			data.managed.filter(
-				(s) =>
-					(!orgFilter || s.orgId === orgFilter) &&
-					matches(q, s.name, `${s.host}:${s.port}`, s.orgName, s.notes)
-			)
-		)
+		sort.sorted(data.managed.filter((s) => matches(q, s.name, `${s.host}:${s.port}`, s.notes)))
 	);
-	let filtering = $derived(!!q.trim() || !!orgFilter);
-	/** where a new server goes by default: the header scope when it is an owned org, else the first */
-	let preferredOrg = $derived(
-		data.ownedOrgs.find((o) => o.id === data.scope?.id)?.id ?? data.ownedOrgs[0]?.id ?? ''
-	);
+	let filtering = $derived(!!q.trim());
 
 	const openEdit = (s: ServerInfo | null) => {
 		dialog = {
 			kind: 'edit',
 			server: s,
-			orgId: s?.orgId ?? (orgFilter || preferredOrg),
+			orgId: s?.orgId ?? data.serverWorkspace?.id ?? '',
 			name: s?.name ?? '',
 			host: s?.host ?? '',
 			port: s ? String(s.port) : '',
@@ -101,9 +87,9 @@
 		(d.host.trim().toLowerCase() !== d.server.host ||
 			Number(d.port) !== d.server.port ||
 			d.scheme !== d.server.scheme);
-	/** What the site owner allows the dialog's organisation (the server's, or the one picked for a new one). */
+	/** Keep the site owner's feature allowances for this server or the fixed management scope. */
 	const allowancesOf = (d: { server: ServerInfo | null; orgId: string }) =>
-		d.server ?? data.ownedOrgs.find((o) => o.id === d.orgId) ?? NO_ALLOWANCES;
+		d.server ?? data.serverWorkspace ?? NO_ALLOWANCES;
 	const FEATURE_KEY = { status: 'publicStatus', leaderboards: 'publicLeaderboards' } as const;
 
 	async function run(fn: () => Promise<void>, done: string) {
@@ -131,7 +117,7 @@
 			notes: d.notes,
 			sortOrder: Number(d.sortOrder) || 0
 		};
-		// A switch the org is not allowed is left out: it stays as it was and the API never sees it.
+		// Leave disallowed feature switches unchanged; the API receives only permitted settings.
 		for (const feature of PUBLIC_FEATURES)
 			if (featureState(allowancesOf(d), d, feature).allowed)
 				payload[FEATURE_KEY[feature]] = d[FEATURE_KEY[feature]];
@@ -208,7 +194,7 @@
 	<button
 		class="ml-auto btn btn-primary"
 		onclick={() => openEdit(null)}
-		disabled={!data.ownedOrgs.length}>Add server</button
+		disabled={!data.serverWorkspace}>Add server</button
 	>
 </div>
 
@@ -219,11 +205,11 @@
 	section of its ServerSettings.ini). RCON passwords are encrypted at rest and never shown again.
 	{#if data.demoAllowed}Host <code class="chip">demo</code> with password
 		<code class="chip">demo</code> uses the built-in mock server.{/if}
-	{#if !data.ownedOrgs.length}Servers belong to an organisation, and you do not own one yet: create
-		one under <a href="/orgs" class="font-semibold text-accent underline">Orgs</a> first.{/if}
+	{#if !data.serverWorkspace}Adding servers is unavailable. Contact the site owner to check your
+		management access.{/if}
 </div>
 
-{#if data.managed.length > 5 || multiOrg}
+{#if data.managed.length > 5}
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		<input
 			class="input sm:w-72"
@@ -232,12 +218,7 @@
 			bind:value={q}
 			aria-label="Search servers"
 		/>
-		{#if multiOrg}
-			<select class="input sm:w-56" bind:value={orgFilter} aria-label="Organisation">
-				<option value="">All organisations</option>
-				{#each data.ownedOrgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-			</select>
-		{/if}
+
 		{#if filtering}
 			<span class="text-[12.5px] text-mist-400">{shown.length} of {data.managed.length}</span>
 		{/if}
@@ -249,7 +230,6 @@
 		<thead>
 			<tr>
 				<SortHeader {sort} key="name">Name</SortHeader>
-				{#if multiOrg}<SortHeader {sort} key="org">Organisation</SortHeader>{/if}
 				<SortHeader {sort} key="target">Target</SortHeader>
 				<SortHeader {sort} key="order" num>Order</SortHeader>
 				<th></th>
@@ -266,10 +246,7 @@
 						{#if s.demo}<Badge tone="info" class="ml-1">demo</Badge>{/if}
 						{#if s.notes}<div class="text-[12px] text-mist-400">{s.notes}</div>{/if}
 					</td>
-					{#if multiOrg}<td
-							><a href="/orgs/{encodeURIComponent(s.orgId)}" class="hover:underline">{s.orgName}</a
-							></td
-						>{/if}
+
 					<td class="font-mono text-[12.5px]">{s.scheme}://{s.host}:{s.port}</td>
 					<td class="num">{s.sortOrder}</td>
 					<td class="text-right whitespace-nowrap">
@@ -283,7 +260,7 @@
 				</tr>
 			{:else}
 				<tr
-					><td colspan={multiOrg ? 5 : 4} class="py-8 text-center text-mist-600"
+					><td colspan="4" class="py-8 text-center text-mist-600"
 						>{filtering ? 'No server matches.' : 'No servers yet.'}</td
 					></tr
 				>
@@ -302,14 +279,6 @@
 				save();
 			}}
 		>
-			{#if !d.server && multiOrg}
-				<label class="block"
-					><span class="field-label">Organisation</span>
-					<select class="input" bind:value={d.orgId} required>
-						{#each data.ownedOrgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-					</select>
-				</label>
-			{/if}
 			<label class="block"
 				><span class="field-label">Name</span><input
 					class="input"
@@ -502,16 +471,16 @@
 				bind:grants={d.grants}
 			/>
 			<p class="note">
-				Owners of {d.server.orgName} hold everything regardless. The whole organisation at once:
-				<a href="/orgs/{encodeURIComponent(d.server.orgId)}/access" class="text-accent underline"
+				Management owners always have access. Manage access across servers in the
+				<a href="/manage/{encodeURIComponent(d.server.orgId)}/access" class="text-accent underline"
 					>access matrix</a
 				>.
 			</p>
 		{:else}
 			<p class="text-mist-400">
 				No members besides owners yet. Share an invite link from <a
-					href="/orgs/{encodeURIComponent(d.server.orgId)}"
-					class="text-accent underline">{d.server.orgName}</a
+					href="/manage/{encodeURIComponent(d.server.orgId)}"
+					class="text-accent underline">Management</a
 				>. Owners always have access.
 			</p>
 		{/if}

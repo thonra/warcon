@@ -92,7 +92,8 @@
 	<div class="text-[13.5px] text-mist-400">
 		Each cell is one member's role on one server. Owners run every server and are not listed as
 		cells. What each role may do is set on the
-		<a href="/orgs/{encodeURIComponent(data.org.id)}/roles" class="text-accent underline">Roles</a> tab.
+		<a href="/manage/{encodeURIComponent(data.org.id)}/roles" class="text-accent underline">Roles</a
+		> tab.
 	</div>
 	<div class="ml-auto flex items-center gap-2">
 		{#if data.members.length > 8}
@@ -109,15 +110,14 @@
 
 {#if !data.orgServers.length}
 	<div class="callout">
-		This organisation has no servers yet. <a
-			href="/servers"
-			class="font-semibold text-accent underline">Add one</a
+		No servers have been added yet. <a href="/servers" class="font-semibold text-accent underline"
+			>Add one</a
 		> and come back to hand out access.
 	</div>
 {:else if !data.members.length}
 	<div class="callout">
 		No members yet. Share an invite link from the <a
-			href="/orgs/{encodeURIComponent(data.org.id)}"
+			href="/manage/{encodeURIComponent(data.org.id)}"
 			class="font-semibold text-accent underline">overview</a
 		>.
 	</div>
@@ -165,7 +165,7 @@
 						</td>
 						{#if isFixed}
 							<td colspan={data.orgServers.length + 1} class="text-mist-600">
-								everything on every server{m.siteOwner ? ' (site owner)' : ' (org owner)'}
+								everything on every server{m.siteOwner ? ' (site owner)' : ' (management owner)'}
 							</td>
 						{:else}
 							{#each data.orgServers as s (s.id)}

@@ -13,7 +13,7 @@ import { callApi, callLoad, callRaw, stubGateway } from './call';
 import { seedWorld, suspend, type PrincipalName, type World } from './world';
 import { PATCH as orgRoute } from '../routes/api/orgs/[id]/+server';
 import { GET as seasonsRoute } from '../routes/api/orgs/[id]/seasons/+server';
-import { load as seasonsTab } from '../routes/(app)/orgs/[id]/seasons/+page.server';
+import { load as seasonsTab } from '../routes/(app)/manage/[id]/seasons/+page.server';
 import { load as publicPage } from '../routes/(public)/s/[id]/leaderboard/+page.server';
 import { GET as publicJson } from '../routes/api/public/servers/[id]/leaderboard/+server';
 import { GET as panelBoard } from '../routes/api/servers/[id]/leaderboard/+server';

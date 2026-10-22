@@ -99,7 +99,7 @@
 			Servers page; members with a default server role on their invite link only get access to servers
 			that exist when they join.
 		{:else}
-			You do not have access to any of {data.org.name}'s servers.
+			You do not have access to any servers.
 		{/if}
 	</div>
 {:else}

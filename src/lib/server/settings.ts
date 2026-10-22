@@ -132,7 +132,7 @@ export const SETTINGS = {
 	},
 	listSyncMs: {
 		label: 'Org list sync',
-		help: 'How often the organisation’s ban and reserved lists are re-applied to each server.',
+		help: 'How often shared ban and reserved lists are re-applied to each server.',
 		unit: 'ms',
 		default: 60_000,
 		min: 10_000,
@@ -159,7 +159,7 @@ export const SETTINGS = {
 	},
 	authEnforce: {
 		label: 'Sign-in rules',
-		help: 'Every account should hold two independent ways in and a second factor on any password. "Advise" only shows the banner. "Privileged" also closes the panel, after the grace period, to site owners, organisation owners and anyone whose server role can ban, change config, run automation or use raw RCON; guests and viewers are left alone. "Everyone" applies that to every account.',
+		help: 'Every account should hold two independent ways in and a second factor on any password. "Advise" only shows the banner. "Privileged" also closes the panel, after the grace period, to site owners, panel administrators and anyone whose server role can ban, change config, run automation or use raw RCON; guests and viewers are left alone. "Everyone" applies that to every account.',
 		unit: 'choice',
 		options: [
 			{ value: 0, label: 'Advise only' },
@@ -182,7 +182,7 @@ export const SETTINGS = {
 	},
 	authMemberGraceDays: {
 		label: 'Member sign-in grace',
-		help: 'The same grace period for members. Their organisation owners can always reset their sign-in methods.',
+		help: 'The same grace period for members. Their panel administrators can always reset their sign-in methods.',
 		unit: 'days',
 		default: 30,
 		min: 0,

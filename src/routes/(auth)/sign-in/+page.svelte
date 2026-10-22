@@ -18,7 +18,7 @@
 	let STEAM_ERRORS: Record<string, string> = $derived({
 		steam_unknown: data.orgSignup
 			? 'That Steam account is not linked to a panel account here.'
-			: 'That Steam account is not linked to a panel account here: open an invite link from your organisation and sign in with Steam there, or link Steam from your account page.',
+			: 'That Steam account is not linked to a panel account here: open an invite link from an administrator and sign in with Steam there, or link Steam from your account page.',
 		steam_disabled: 'This account is disabled.',
 		steam_state: 'The Steam sign-in took too long or was opened in another browser. Try again.',
 		steam_taken: 'That Steam account is already linked to another user.'
@@ -29,7 +29,7 @@
 		if (e === 'discord')
 			return data.orgSignup
 				? 'Discord sign-in failed. Try again, or use another method.'
-				: 'Discord sign-in failed. That Discord account is not linked to a panel account here: open an invite link from your organisation, or link Discord from your account page.';
+				: 'Discord sign-in failed. That Discord account is not linked to a panel account here: open an invite link from an administrator, or link Discord from your account page.';
 		if (e.startsWith('steam')) return STEAM_ERRORS[e] ?? 'Steam sign-in failed. Try again.';
 		return '';
 	});
@@ -150,14 +150,10 @@
 {/if}
 
 <p class="note text-center">
-	{#if data.orgSignup}
-		New here? Discord or Steam creates your account on the spot, or
-		<a href="/sign-up" class="text-accent underline">create your own organisation</a>.
-	{:else if data.discord}
-		New here? Open the invite link from your organisation and sign in there: it creates your
-		account.
+	{#if data.discord}
+		New here? Open the invite link from an administrator and sign in there: it creates your account.
 	{:else}
-		New here? Open the invite link from your organisation.
+		New here? Open the invite link from an administrator.
 	{/if}
 </p>
 <p class="note text-center">

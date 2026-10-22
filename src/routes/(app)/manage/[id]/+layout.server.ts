@@ -13,6 +13,8 @@ import { orgListsView } from '$lib/server/lists';
  */
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	const env = getEnv();
+	if (env.WARCON_WORKSPACE_ID && params.id !== env.WARCON_WORKSPACE_ID)
+		error(404, 'Management page not found.');
 	try {
 		const { org, role, user } = await requireListsRole(env, locals, params.id, 'any');
 		// This org's servers regardless of the header scope: managing an org must not depend on it.

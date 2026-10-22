@@ -4,8 +4,6 @@
 	// the organisation's servers, and each server's marks and lists through the routes its Players
 	// tab uses, so every row shows what the person may see on that server, and acts with what they
 	// may do there.
-	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { api, qs } from '$lib/api';
 	import { watchLive } from '$lib/live';
 	import { can } from '$lib/capabilities';
@@ -17,24 +15,8 @@
 
 	let { data }: PageProps = $props();
 
-	/** the organisations in view, in the switcher's order; the page shows one at a time */
-	let orgs = $derived.by(() => {
-		const seen = new Map<string, string>();
-		for (const s of data.servers) if (!seen.has(s.orgId)) seen.set(s.orgId, s.orgName);
-		return [...seen].map(([id, name]) => ({ id, name }));
-	});
-	let org = $derived(
-		orgs.find((o) => o.id === page.url.searchParams.get('org')) ??
-			orgs.find((o) => o.id === data.user.defaultOrgId) ??
-			orgs[0] ??
-			null
-	);
-	let servers = $derived(data.servers.filter((s) => s.orgId === org?.id));
-	function chooseOrg(id: string) {
-		const url = new URL(page.url);
-		url.searchParams.set('org', id);
-		void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
-	}
+	let org = $derived(data.scope);
+	let servers = $derived(data.servers);
 
 	let search = $state('');
 	/** keep the filter across a trip to a dossier and back */
@@ -179,12 +161,12 @@
 		{#if org && servers.length}
 			<p class="text-[13px] text-mist-400">
 				{#if checking}
-					Checking {org.name}'s servers…
+					Checking servers…
 				{:else}
 					{fmtNum(playing)} player{playing === 1 ? '' : 's'} on {withPlayers} of {servers.length} server{servers.length ===
 					1
 						? ''
-						: 's'} of {org.name}{#if down.length}<span class="text-danger"
+						: 's'}{#if down.length}<span class="text-danger"
 							>&nbsp;· not reachable: {down.map((s) => s.name).join(', ')}</span
 						>{/if}
 				{/if}
@@ -192,19 +174,6 @@
 		{/if}
 	</div>
 	<span class="ml-auto inline-flex flex-wrap gap-1.5">
-		{#if orgs.length > 1}
-			<select
-				class="input w-auto pr-[30px] sm:max-w-56"
-				aria-label="Organisation"
-				value={org?.id}
-				onchange={(e) => {
-					only = '';
-					chooseOrg(e.currentTarget.value);
-				}}
-			>
-				{#each orgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-			</select>
-		{/if}
 		{#if canAnnounce}
 			<button class="btn" onclick={() => (announcing = true)}>Announce</button>
 		{/if}
@@ -213,12 +182,7 @@
 
 {#if !servers.length}
 	<div class="callout">
-		{#if data.scope}
-			No servers in {data.scope.name}{data.canManage ? ' yet' : ' are shared with you'}. Pick
-			another organisation, or all of them, from the header.
-		{:else}
-			{data.canManage ? 'No servers yet.' : 'No servers have been shared with you yet.'}
-		{/if}
+		{data.canManage ? 'No servers yet.' : 'No servers have been shared with you yet.'}
 	</div>
 {:else}
 	<div class="panel">

@@ -15,7 +15,7 @@
 
 	let {
 		orgId,
-		orgName = 'the organisation',
+		orgName = 'all servers',
 		steamId = '',
 		name = '',
 		server = null,
@@ -164,10 +164,9 @@
 				<label class="flex items-start gap-2">
 					<input type="radio" class="mt-1" bind:group={scope} value="org" />
 					<span
-						><b>Every server in {orgName}</b>
+						><b>All managed servers</b>
 						<span class="block text-[12.5px] text-mist-400"
-							>Goes on the organisation's ban list and is pushed to all its servers, now and in
-							future.</span
+							>Goes on the shared ban list and is pushed to all servers, now and in future.</span
 						></span
 					>
 				</label>

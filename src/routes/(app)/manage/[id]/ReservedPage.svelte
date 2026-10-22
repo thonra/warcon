@@ -47,7 +47,7 @@
 	let where = $derived(
 		group
 			? group.everyServer
-				? `every server in ${org.name}`
+				? 'every server'
 				: group.servers.map((s) => s.name).join(', ') || 'no server'
 			: ''
 	);
@@ -251,7 +251,7 @@
 			!(await confirmDialog(
 				group
 					? `Take ${label} out of ${group.name}?`
-					: `Withdraw the reserved slot for ${label} across ${org.name}?`,
+					: `Withdraw the reserved slot for ${label} on all servers?`,
 				{ okLabel: group ? 'Remove' : 'Withdraw', danger: true }
 			))
 		)
@@ -307,8 +307,8 @@
 				{#if lists.membersReserved || members}<span><b>{members}</b> members</span>{/if}
 			</div>
 			<p class="note">
-				Anyone on the list skips the join queue on every server in {org.name}. The list has no
-				length limit; each server's MaxReservedSlots only sets how many player slots it holds back.
+				Anyone on the list skips the join queue on every server. The list has no length limit; each
+				server's MaxReservedSlots only sets how many player slots it holds back.
 			</p>
 		{/if}
 	</div>
@@ -347,8 +347,8 @@
 				{#if group}
 					{group.name} is for no server. Choose its servers with Servers… above.
 				{:else}
-					{org.name} has no servers yet, so there is nothing to push the list to. Entries are kept and
-					applied when a server is added.
+					No servers have been added yet, so there is nothing to push the list to. Entries are kept
+					and applied when a server is added.
 				{/if}
 			</p>
 		{/each}
@@ -414,9 +414,9 @@
 				While the group is on, a player added here gets the slot at once; while it is off, when it
 				is next switched on. A player with an expiry leaves the group when the time comes.
 			{:else}
-				Handed out on every server in {org.name}, now and when one is added later. A slot with an
-				expiry is withdrawn by the panel when the time comes. To reserve a slot on one server only,
-				use that server's Reserved slots tab.
+				Handed out on every server, now and when one is added later. A slot with an expiry is
+				withdrawn by the panel when the time comes. To reserve a slot on one server only, use that
+				server's Reserved slots tab.
 			{/if}
 		</p>
 		{#if owner && !group}
@@ -431,8 +431,8 @@
 				<span
 					><b>Members get a reserved slot.</b>
 					<span class="block text-mist-400"
-						>Every member of {org.name} who linked a SteamID on their Account page is reserved a slot
-						on all its servers. Banned members are skipped.</span
+						>Every member who linked a SteamID on their Account page is reserved a slot on all its
+						servers. Banned members are skipped.</span
 					></span
 				>
 			</label>
@@ -587,7 +587,7 @@
 		</div>
 		{#if group}
 			<p class="note">
-				Server badges as on the organisation's list: <Badge tone="ok">applied</Badge> by the panel,
+				Server badges as on the global list: <Badge tone="ok">applied</Badge> by the panel,
 				<Badge tone="warn">pending</Badge> the next sync, <Badge tone="err">failed</Badge> (hover for
 				why), <Badge>local</Badge> already on that server but added outside the panel.
 			</p>
@@ -613,7 +613,7 @@
 			<b>Nobody holds a reserved slot yet.</b>
 			<span class="block text-mist-400"
 				>A reserved slot lets your admins, donors and clan members skip the queue when a server is
-				full. Reserve one above and the panel hands it out on every server in {org.name}.</span
+				full. Reserve one above and the panel hands it out on every server.</span
 			>
 		</div>
 	{/if}

@@ -238,7 +238,7 @@
 					<tr
 						><td colspan="6" class="py-6 text-center text-mist-600">
 							{#if loading}Loading…{:else if configured === false}This server has no kill feed yet.
-								An org owner turns it on under
+								An administrator turns it on under
 								<a
 									href="/server/{encodeURIComponent(id)}/config"
 									class="text-accent hover:underline">Config</a

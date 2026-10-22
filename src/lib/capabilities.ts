@@ -35,7 +35,7 @@ export type CapabilityGroup = 'read' | 'play' | 'moderate' | 'manage';
 export const CAPABILITY_GROUPS: { key: CapabilityGroup; label: string; hint: string }[] = [
 	{ key: 'read', label: 'Read', hint: 'See the server without touching it.' },
 	{ key: 'play', label: 'Play', hint: 'Day-to-day running of a match.' },
-	{ key: 'moderate', label: 'Moderate', hint: 'Bans, reserved slots and the org lists.' },
+	{ key: 'moderate', label: 'Moderate', hint: 'Bans, reserved slots and shared lists.' },
 	{ key: 'manage', label: 'Manage', hint: 'Settings, automation and raw access.' }
 ];
 
@@ -86,13 +86,13 @@ export const CAPABILITY_INFO: Record<Capability, CapabilityInfo> = {
 		group: 'moderate'
 	},
 	'lists.ban': {
-		label: 'Org ban list',
-		hint: "Ban and unban on every server through the organisation's ban list, and push the lists to servers; see a player's entry on it in the dossier.",
+		label: 'Shared ban list',
+		hint: "Ban and unban on every server through the shared ban list, and push the lists to servers; see a player's entry on it in the dossier.",
 		group: 'moderate'
 	},
 	'lists.reserve': {
-		label: 'Org reserved slots',
-		hint: "Reserve and withdraw slots on every server through the organisation's reserved-slot list, and push the lists to servers; see a player's entry on it in the dossier.",
+		label: 'Shared reserved slots',
+		hint: "Reserve and withdraw slots on every server through the shared reserved-slot list, and push the lists to servers; see a player's entry on it in the dossier.",
 		group: 'moderate'
 	},
 	'players.notes.manage': {

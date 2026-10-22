@@ -114,12 +114,9 @@
 	let busy = $state('');
 	async function reserve(p: SeenPlayer) {
 		if (
-			!(await confirmDialog(
-				`Reserve a slot for ${p.name} (${p.steamId}) on every server in ${data.org.name}?`,
-				{
-					okLabel: 'Reserve'
-				}
-			))
+			!(await confirmDialog(`Reserve a slot for ${p.name} (${p.steamId}) on every server?`, {
+				okLabel: 'Reserve'
+			}))
 		)
 			return;
 		busy = p.steamId;
@@ -128,7 +125,7 @@
 				steamId: p.steamId,
 				reason: ''
 			});
-			toast(`${p.name} is on the organisation's reserved slots.`, 'ok');
+			toast(`${p.name} is on the global reserved slots list.`, 'ok');
 		} catch (err) {
 			toast(errorMessage(err), 'err');
 		} finally {
@@ -164,8 +161,7 @@
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		<span class="label-sm mb-0!">Players seen</span>
 		<span class="text-[12.5px] text-mist-600"
-			>{fmtNum(data.total)} on the servers you can open · names, playtime and stats stay inside {data
-				.org.name}</span
+			>{fmtNum(data.total)} on the servers you can open · names, playtime and statistics</span
 		>
 	</div>
 	<div class="mb-3 flex flex-wrap items-center gap-2">
@@ -310,7 +306,7 @@
 									<button
 										class="btn btn-sm btn-danger"
 										disabled={busy === p.steamId || p.banned === 'org'}
-										title={p.banned === 'org' ? 'Already on the organisation ban list' : ''}
+										title={p.banned === 'org' ? 'Already on the global ban list' : ''}
 										onclick={() => (banning = p)}>Ban</button
 									>
 								{/if}
@@ -341,9 +337,9 @@
 		Built from the sessions the worker records on servers you can open, so only players who have
 		joined one of them appear, and only the names they used there. Playtime is the sum of session
 		lengths.{#if canBan}
-			Ban goes on the organisation's ban list.{/if}{#if canReserve}
+			Ban goes on the global ban list.{/if}{#if canReserve}
 			Reserve goes on its reserved slots.{/if}{#if notesOn.length}
-			Watch marks the player across the organisation.{/if}
+			Watch marks the player across all servers.{/if}
 	</p>
 </div>
 
@@ -351,7 +347,7 @@
 	{#key banning.steamId}
 		<BanDialog
 			{orgId}
-			orgName={data.org.name}
+			orgName="All servers"
 			steamId={banning.steamId}
 			name={banning.name}
 			canOrg={canBan}

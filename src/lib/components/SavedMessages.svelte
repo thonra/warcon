@@ -43,7 +43,7 @@
 
 	/** the org's Messages tab, for its owners (and the site owner), who write the list */
 	let editHref = $derived(
-		server.manager ? `/orgs/${encodeURIComponent(server.orgId)}/messages` : null
+		server.manager ? `/manage/${encodeURIComponent(server.orgId)}/messages` : null
 	);
 
 	let list = $state<SavedMessage[] | null>(null);
@@ -192,9 +192,7 @@
 			</div>
 		{:else}
 			<p class="px-3 py-2.5 text-[12.5px] text-mist-400">
-				{list.length
-					? 'No saved message has that in its name or text.'
-					: `${server.orgName} has no saved messages yet.`}
+				{list.length ? 'No saved message has that in its name or text.' : 'No saved messages yet.'}
 			</p>
 		{/if}
 		<div
@@ -206,7 +204,7 @@
 					>{list.length ? 'Edit saved messages' : 'Add saved messages'}</a
 				>
 			{:else}
-				<span>Written by the owners of {server.orgName}</span>
+				<span>Written by the administrators</span>
 			{/if}
 		</div>
 	</div>

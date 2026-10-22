@@ -150,11 +150,11 @@
 <div class="panel">
 	<span class="label-sm">Map sets</span>
 	<p class="note mt-0 mb-4 max-w-[900px]">
-		Rotations saved under a name for {data.org.name}'s servers, such as an infantry set and a
-		standard one. On a server's Map rotation tab, anyone with Config &amp; settings there loads one
-		in place of the rotation and applies it, and switches back by loading the other. A set is its
-		entries only: whether the rotation is on, and Ordered or Random, stay as each server has them.
-		Save a server's rotation as a set from its Map rotation tab, or paste one in here.
+		Rotations saved under a name for all servers, such as an infantry set and a standard one. On a
+		server's Map rotation tab, anyone with Config &amp; settings there loads one in place of the
+		rotation and applies it, and switches back by loading the other. A set is its entries only:
+		whether the rotation is on, and Ordered or Random, stay as each server has them. Save a server's
+		rotation as a set from its Map rotation tab, or paste one in here.
 	</p>
 
 	<div class="table-wrap">

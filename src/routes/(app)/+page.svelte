@@ -40,7 +40,6 @@
 	type Show = (typeof SHOWS)[number];
 
 	let q = $state('');
-	let orgFilter = $state('');
 	let sort = $state<Sort>('default');
 	let show = $state<Show>('all');
 	let restored = $state(false);
@@ -63,14 +62,6 @@
 		} catch {
 			/* private mode */
 		}
-	});
-
-	/** organisations represented on the board; the select only appears when there is more than one */
-	let orgs = $derived.by(() => {
-		if (data.scope) return [];
-		const seen = new Map<string, string>();
-		for (const s of data.servers) seen.set(s.orgId, s.orgName);
-		return [...seen].map(([id, name]) => ({ id, name }));
 	});
 
 	type Row = { s: (typeof data.servers)[number]; i: number; sum: Summary | undefined };
@@ -106,24 +97,22 @@
 		return data.servers
 			.map((s, i): Row => ({ s, i, sum: summaries[s.id] }))
 			.filter((r) => {
-				if (orgFilter && r.s.orgId !== orgFilter) return false;
 				const st = status(r);
 				if (show === 'online' && !st) return false;
 				if (show === 'offline' && health(r) !== 0) return false;
 				if (show === 'populated' && !(st && st.playerCount > 0)) return false;
 				if (!needle) return true;
 				const hay =
-					`${r.s.name} ${r.s.host}:${r.s.port} ${r.s.orgName} ` +
+					`${r.s.name} ${r.s.host}:${r.s.port} ` +
 					`${st?.serverName ?? ''} ${st ? mapName(st.map) : ''}`;
 				return hay.toLowerCase().includes(needle);
 			})
 			.sort((a, b) => cmp(a, b) || a.i - b.i)
 			.map((r) => r.s);
 	});
-	let filtering = $derived(!!q.trim() || !!orgFilter || show !== 'all');
+	let filtering = $derived(!!q.trim() || show !== 'all');
 	const clearFilters = () => {
 		q = '';
-		orgFilter = '';
 		show = 'all';
 	};
 
@@ -143,10 +132,7 @@
 
 {#if !data.servers.length}
 	<div class="callout">
-		{#if data.scope}
-			No servers in {data.scope.name}{data.canManage ? ' yet' : ' are shared with you'}. Pick
-			another organisation, or all of them, from the header.
-		{:else if data.canManage}
+		{#if data.canManage}
 			No servers yet. <a href="/servers" class="font-semibold text-accent underline"
 				>Add your first server</a
 			>{#if data.demoAllowed}
@@ -154,11 +140,7 @@
 				<code class="chip">1</code>, password <code class="chip">demo</code> to try the panel against
 				the built-in mock game server.{:else}.{/if}
 		{:else}
-			No servers have been shared with you yet. Ask an owner of your organisation to grant you
-			access{#if data.canCreateOrg}, or <a
-					href="/sign-up"
-					class="font-semibold text-accent underline">create your own organisation</a
-				>{/if}.
+			No servers have been shared with you yet. Ask an administrator to grant you access.
 		{/if}
 	</div>
 {:else}
@@ -177,16 +159,7 @@
 				<option value="populated">With players</option>
 				<option value="offline">Offline</option>
 			</select>
-			{#if orgs.length > 1}
-				<select
-					class="input w-auto pr-[30px] sm:max-w-56"
-					bind:value={orgFilter}
-					aria-label="Organisation"
-				>
-					<option value="">All organisations</option>
-					{#each orgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
-				</select>
-			{/if}
+
 			<select class="input w-auto pr-[30px] sm:ml-auto" bind:value={sort} aria-label="Sort by">
 				<option value="default">Sort: default</option>
 				<option value="name">Sort: name</option>
@@ -223,7 +196,7 @@
 						<span class="ml-auto"><RoleBadge role={s.roleName} /></span>
 					</div>
 					<div class="mb-3 font-mono text-[12px] text-mist-400">
-						{#if s.host}{s.host}:{s.port}{:else}{s.orgName}{/if}{#if s.demo}&nbsp;· demo{/if}
+						{#if s.host}{s.host}:{s.port}{/if}{#if s.demo}&nbsp;· demo{/if}
 					</div>
 					{#if !sum}
 						<div class="text-[13px] text-mist-600">Checking…</div>
@@ -266,7 +239,7 @@
 {#if announcing}
 	<AnnounceDialog
 		servers={data.servers}
-		orgId={orgFilter || data.scope?.id || null}
+		orgId={data.scope?.id ?? null}
 		onclose={() => (announcing = false)}
 	/>
 {/if}

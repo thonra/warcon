@@ -416,7 +416,7 @@ describe.skipIf(!hasTestDb)('reserved-slot groups', () => {
 			join(ROUTES, '(app)', 'server', '[id]', 'slots', '+page.server.ts')
 		);
 		const { load: orgLayout } = await import(
-			join(ROUTES, '(app)', 'orgs', '[id]', '+layout.server.ts')
+			join(ROUTES, '(app)', 'manage', '[id]', '+layout.server.ts')
 		);
 		for (const who of ['viewer', 'orgBans'] as const) {
 			const page = await callLoad(slotsLoad, w.users[who], { params: { id: w.server.id } });

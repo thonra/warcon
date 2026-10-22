@@ -174,7 +174,7 @@
 <div class="mb-4 flex flex-wrap items-center gap-3">
 	<div class="text-[13.5px] text-mist-400">
 		What each server role may do. Changing a role changes it for everyone who holds it, on every
-		server. Owners of the organisation always hold everything.
+		server. Management owners always hold everything.
 	</div>
 	<span class="ml-auto inline-flex gap-2">
 		<button

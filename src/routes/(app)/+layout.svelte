@@ -1,31 +1,26 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate, invalidateAll } from '$app/navigation';
-	import { api, errorMessage } from '$lib/api';
-	import { toast } from '$lib/toast.svelte';
+	import { afterNavigate } from '$app/navigation';
 	import Mark from '$lib/components/Mark.svelte';
 	import Pulse from '$lib/components/Pulse.svelte';
 	import { health } from '$lib/health.svelte';
 	import { initials } from '$lib/format';
-	import { orgsLink } from '$lib/orgs';
+	import { orgHome, orgsLink } from '$lib/orgs';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
-	// Someone in one org goes straight to it; the org page links back to the list.
-	let orgsHref = $derived(orgsLink(data.orgs, data.user.role === 'owner'));
+	let manageHref = $derived(orgsLink(data.orgs, data.user.role === 'owner'));
+	let showManage = $derived(data.orgs.some((o) => orgHome(o, data.user.role === 'owner') !== null));
 
 	let currentId = $derived(
 		page.route.id?.includes('/server/[id]') ? (page.params.id ?? null) : null
 	);
-	// A server outside the org scope still opens by link: the server layout supplies it.
+	// Server pages also supply their own permission-checked server details.
 	let current = $derived(
 		data.servers.find((s) => s.id === currentId) ??
 			(currentId ? (page.data.server as (typeof data.servers)[number] | undefined) : undefined)
 	);
-	// Group the switcher by org once the user can see more than one.
-	let multiOrg = $derived(new Set(data.servers.map((s) => s.orgId)).size > 1);
 	let switcherOpen = $state(false);
-	let scopeOpen = $state(false);
 	let userOpen = $state(false);
 
 	// Type-to-filter once the switcher is long enough to need it.
@@ -35,32 +30,14 @@
 		const needle = query.trim().toLowerCase();
 		if (!needle) return data.servers;
 		return data.servers.filter((s) =>
-			`${s.name} ${s.host}:${s.port} ${s.orgName}`.toLowerCase().includes(needle)
+			`${s.name} ${s.host}:${s.port}`.toLowerCase().includes(needle)
 		);
 	});
-
-	// The organisation scope: which org's servers the switcher, dashboard and Servers page show.
-	let scopeBusy = $state(false);
-	async function setScope(orgId: string | null) {
-		scopeOpen = false;
-		switcherOpen = false;
-		if ((data.scope?.id ?? null) === orgId) return;
-		scopeBusy = true;
-		try {
-			await api('PUT', '/api/scope', { orgId });
-			await invalidateAll();
-		} catch (err) {
-			toast(errorMessage(err), 'err');
-		} finally {
-			scopeBusy = false;
-		}
-	}
 
 	const isActive = (path: string) =>
 		path === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(path);
 	const closeAll = () => {
 		switcherOpen = false;
-		scopeOpen = false;
 		userOpen = false;
 		query = '';
 	};
@@ -85,64 +62,6 @@
 			<span class="hidden caps text-mist-600 sm:inline">rcon</span>
 		</a>
 
-		{#if data.orgs.length > 1}
-			<!-- Phones get the same choice inside the server switcher instead. -->
-			<div class="relative ml-1 hidden shrink-0 sm:block">
-				<button
-					type="button"
-					class="btn max-w-[110px] gap-1.5 pr-2.5 sm:max-w-[200px]"
-					title="Organisation scope"
-					aria-haspopup="menu"
-					aria-expanded={scopeOpen}
-					disabled={scopeBusy}
-					onclick={(e) => {
-						e.stopPropagation();
-						userOpen = false;
-						switcherOpen = false;
-						scopeOpen = !scopeOpen;
-					}}
-				>
-					<span class="truncate {data.scope ? '' : 'text-mist-400'}"
-						>{data.scope ? data.scope.name : 'All orgs'}</span
-					>
-					<span class="text-[10px] text-mist-600">▼</span>
-				</button>
-				{#if scopeOpen}
-					<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-					<div class="menu" role="menu" tabindex="-1" onclick={(e) => e.stopPropagation()}>
-						<div class="px-3 pt-2 pb-1 caps text-mist-600">Show servers of</div>
-						<button
-							type="button"
-							class="menu-item {data.scope ? '' : 'border-accent! bg-accent/10 text-accent'}"
-							role="menuitemradio"
-							aria-checked={!data.scope}
-							onclick={() => setScope(null)}>All organisations</button
-						>
-						{#each data.orgs as o (o.id)}
-							<button
-								type="button"
-								class="menu-item {data.scope?.id === o.id
-									? 'border-accent! bg-accent/10 text-accent'
-									: ''}"
-								role="menuitemradio"
-								aria-checked={data.scope?.id === o.id}
-								onclick={() => setScope(o.id)}
-							>
-								<span class="truncate">{o.name}</span>
-								{#if o.id === data.user.defaultOrgId}<span class="ml-auto text-[11px] text-mist-600"
-										>default</span
-									>{/if}
-							</button>
-						{/each}
-						<div class="my-1.5 border-t border-white/8"></div>
-						<a href="/account" class="menu-item text-mist-400" role="menuitem" onclick={closeAll}
-							>Set a default…</a
-						>
-					</div>
-				{/if}
-			</div>
-		{/if}
-
 		<div class="relative ml-1 min-w-0 flex-1 sm:flex-none">
 			<button
 				type="button"
@@ -152,7 +71,6 @@
 				onclick={(e) => {
 					e.stopPropagation();
 					userOpen = false;
-					scopeOpen = false;
 					switcherOpen = !switcherOpen;
 				}}
 			>
@@ -175,10 +93,7 @@
 							/>
 						</div>
 					{/if}
-					{#each listed as s, i (s.id)}
-						{#if multiOrg && (i === 0 || listed[i - 1].orgId !== s.orgId)}
-							<div class="px-3 pt-2 pb-1 caps text-mist-600">{s.orgName}</div>
-						{/if}
+					{#each listed as s (s.id)}
 						<a
 							href="/server/{encodeURIComponent(s.id)}"
 							class="menu-item {s.id === currentId
@@ -195,8 +110,6 @@
 						<div class="px-3 py-2 text-[12.5px] text-mist-400">
 							{#if query.trim()}
 								No server matches.
-							{:else if data.scope}
-								No servers in {data.scope.name}.
 							{:else}
 								{data.canManage ? 'No servers yet.' : 'No servers shared with you yet.'}
 							{/if}
@@ -207,30 +120,6 @@
 						<a href="/servers" class="menu-item text-mist-400" role="menuitem" onclick={closeAll}
 							>Manage servers…</a
 						>
-					{/if}
-					{#if data.orgs.length > 1}
-						<div class="sm:hidden">
-							<div class="my-1.5 border-t border-white/8"></div>
-							<div class="px-3 pt-1 pb-1 caps text-mist-600">Show servers of</div>
-							<button
-								type="button"
-								class="menu-item {data.scope ? '' : 'border-accent! bg-accent/10 text-accent'}"
-								role="menuitemradio"
-								aria-checked={!data.scope}
-								onclick={() => setScope(null)}>All organisations</button
-							>
-							{#each data.orgs as o (o.id)}
-								<button
-									type="button"
-									class="menu-item {data.scope?.id === o.id
-										? 'border-accent! bg-accent/10 text-accent'
-										: ''}"
-									role="menuitemradio"
-									aria-checked={data.scope?.id === o.id}
-									onclick={() => setScope(o.id)}><span class="truncate">{o.name}</span></button
-								>
-							{/each}
-						</div>
 					{/if}
 				</div>
 			{/if}
@@ -246,7 +135,11 @@
 					>Servers</a
 				>
 			{/if}
-			<a href={orgsHref} class="nav-pill {isActive('/orgs') ? 'nav-pill-active' : ''}">Orgs</a>
+			{#if showManage}
+				<a href={manageHref} class="nav-pill {isActive('/manage') ? 'nav-pill-active' : ''}"
+					>Manage</a
+				>
+			{/if}
 			{#if data.user.role === 'owner'}
 				<a href="/admin" class="nav-pill {isActive('/admin') ? 'nav-pill-active' : ''}">Admin</a>
 			{/if}
@@ -298,7 +191,7 @@
 						{#if data.canManage}
 							<a href="/servers" class="menu-item" role="menuitem">Servers</a>
 						{/if}
-						<a href={orgsHref} class="menu-item" role="menuitem">Orgs</a>
+						{#if showManage}<a href={manageHref} class="menu-item" role="menuitem">Manage</a>{/if}
 						{#if data.user.role === 'owner'}
 							<a href="/admin" class="menu-item" role="menuitem">Admin</a>
 						{/if}

@@ -27,6 +27,7 @@ import { parseDiscordInvite } from '$lib/discord-invite';
 import { isBoardOpens } from '$lib/seasons';
 import { hiddenColumns } from '$lib/leaderboard';
 import { forgetSeasons } from './seasons';
+import { assertWorkspaceMutable, assertWorkspaceTarget } from './workspace';
 import {
 	BAN_MESSAGE_VARS,
 	DEFAULT_BAN_MESSAGE,
@@ -163,6 +164,7 @@ export async function setOrgControls(
 	org: OrgRow,
 	body: Record<string, unknown>
 ): Promise<void> {
+	if (body.suspended !== undefined) assertWorkspaceMutable(env);
 	const set: Partial<typeof organizations.$inferInsert> = {};
 	const changes: Record<string, unknown> = {};
 	if (body.serverLimit !== undefined) {
@@ -281,6 +283,7 @@ export async function createOrg(
 	actor: SessionUser,
 	body: Record<string, unknown>
 ): Promise<string> {
+	assertWorkspaceMutable(env);
 	const name = validateOrgName(body.name);
 	const id = newId();
 	const slug = await freeSlug(env, slugOf(name));
@@ -309,6 +312,7 @@ export async function updateOrg(
 	org: OrgRow,
 	body: Record<string, unknown>
 ): Promise<void> {
+	if (body.name !== undefined) assertWorkspaceMutable(env);
 	const set: Partial<typeof organizations.$inferInsert> = {};
 	const detail: Record<string, unknown> = { orgId: org.id };
 	if (body.name !== undefined) {
@@ -367,6 +371,7 @@ export async function deleteOrg(
 	actor: SessionUser,
 	org: OrgRow
 ): Promise<void> {
+	assertWorkspaceMutable(env);
 	const gone = await env.db
 		.select({ id: servers.id, name: servers.name, host: servers.host, port: servers.port })
 		.from(servers)
@@ -843,6 +848,7 @@ export async function findInvite(
 		.leftJoin(orgRoles, eq(orgRoles.id, orgInvites.serverRoleId))
 		.where(eq(orgInvites.token, token))
 		.limit(1);
+	if (row && env.WARCON_WORKSPACE_ID && row.org.id !== env.WARCON_WORKSPACE_ID) return null;
 	return row ?? null;
 }
 
@@ -859,6 +865,7 @@ export async function joinOrg(
 	invite: OrgInviteRow,
 	org: OrgRow
 ): Promise<void> {
+	assertWorkspaceTarget(env, org.id);
 	// Members re-opening a link (even one that has since run out) are simply already in.
 	if (await isMember(env, org.id, user.id)) return;
 	const problem = inviteProblem(invite) ?? suspendedProblem(org);

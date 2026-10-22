@@ -12,8 +12,8 @@
 <div class="mt-1 text-[22px] font-semibold tracking-tight">Use your recovery key</div>
 <p class="mt-2 text-[13px] leading-relaxed text-mist-400">
 	The 40-character key you saved from your account page. It works once: you are signed in and asked
-	to set up new sign-in methods straight away. No key? An owner of your organisation can reset your
-	sign-in methods from the Users page.
+	to set up new sign-in methods straight away. No key? An administrator can reset your sign-in
+	methods from the Users page.
 </p>
 
 <form

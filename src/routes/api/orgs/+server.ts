@@ -8,7 +8,11 @@ import { assertMayCreateOrg } from '$lib/server/signup';
 export const GET = route(async ({ locals }) => {
 	const env = getEnv();
 	const user = requireUser(locals);
-	return apiJson({ ok: true, orgs: await listOrgs(env, await ownedOrgIds(env, user)) });
+	const owned = await ownedOrgIds(env, user);
+	const ids = env.WARCON_WORKSPACE_ID
+		? owned.filter((id) => id === env.WARCON_WORKSPACE_ID)
+		: owned;
+	return apiJson({ ok: true, orgs: await listOrgs(env, ids) });
 });
 
 /** The site owner always; anyone under the cap when ALLOW_ORG_SIGNUP is on. The creator becomes its first owner. */

@@ -375,7 +375,7 @@
 								<Badge tone="accent">member</Badge>
 							{:else if r.managed}
 								<Badge tone={STATE_TONE[r.state]}
-									>{r.scope === 'server' ? 'here' : 'org'}{r.state === 'applied'
+									>{r.scope === 'server' ? 'here' : 'shared'}{r.state === 'applied'
 										? ''
 										: ` · ${r.state}`}</Badge
 								>

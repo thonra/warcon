@@ -43,6 +43,10 @@ check workspace-delete-closed 'workspace_fixed' "$(req $J1 DELETE /api/orgs/$ORG
 check scope-closed 'workspace_fixed' "$(req $J1 PUT /api/scope '{"orgId":null}')"
 check old-orgs-redirect '308' "$(pagecode $J1 /orgs)"
 check old-org-deep-redirect '308' "$(pagecode $J1 /orgs/$ORG/bans)"
+# Site owners have implicit access. Join explicitly for the member-reserved-slot checks below.
+R=$(req $J1 POST /api/orgs/$ORG/invites '{"label":"Smoke owner","orgRole":"owner","maxUses":1}')
+INVITE_TOKEN=$(echo "$R" | sed -n 's/.*"url":"[^"]*\/join\/\([^"]*\)".*/\1/p')
+check owner-membership '303' "$(form $J1 "/join/$INVITE_TOKEN?/join" '')"
 # grants point at the org's roles (built-ins viewer/operator/admin start every org); look their ids up once
 ROLES=$(req $J1 GET /api/orgs/$ORG/roles); check org-roles '"name":"operator"' "$ROLES"
 roleid() { echo "$ROLES" | grep -o "{\"id\":\"[^\"]*\",\"name\":\"$1\"" | sed -E 's/.*"id":"([^"]+)".*/\1/'; }

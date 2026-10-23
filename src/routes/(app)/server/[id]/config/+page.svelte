@@ -532,7 +532,7 @@
 					The kill feed rules on the Automation tab cannot act until it is fixed.
 				</p>
 			{:else}
-				<p class="font-semibold">The game is not posting to Warcon.</p>
+				<p class="font-semibold">The game is not posting to 圣女千夜的教堂.</p>
 				<p class="mt-1 text-mist-400">
 					The kill feed rules on the Automation tab cannot act until it does. On the host, check
 					that:
@@ -654,7 +654,7 @@
 		{#if eventFeed}With <span class="chip">bEventFeedEnabled</span> on and an
 			<span class="chip">EventFeedEndpoints</span> entry for this panel in the server's file, the game{:else}With
 			<span class="chip">[WDServerFeed]</span> set, the game{/if} posts every kill (killer, victim, weapon,
-		distance, headshot) to Warcon a second or two after it happens: the kill feed on the Overview tab,
+		distance, headshot) to 圣女千夜的教堂 a second or two after it happens: the kill feed on the Overview tab,
 		combat stats on Analytics and player dossiers, and the team-kill trigger.
 		{#if feed && !feed.configured && eventFeed}Configure creates the token and shows the lines to
 			paste into the file on the host; the game reads them when it starts.{:else if feed && !feed.configured}Configure

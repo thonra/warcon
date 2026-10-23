@@ -15,7 +15,7 @@ import {
 } from './webhook-status-core';
 
 const opts = {
-	appName: 'Warcon',
+	appName: '圣女千夜的教堂',
 	orgName: 'Bakurani Boys',
 	origin: 'https://rcon.example.com',
 	now: Date.parse('2026-09-13T12:00:00Z')
@@ -122,7 +122,7 @@ describe('buildStatusEmbed', () => {
 		});
 		expect(e.image?.url).toBe('https://rcon.example.com/maps/Kavkazi/DayLateClear-wide.webp');
 		expect(e.timestamp).toBe('2026-09-13T11:59:50Z');
-		expect(e.footer?.text).toBe('Warcon');
+		expect(e.footer?.text).toBe('圣女千夜的教堂');
 	});
 	test('the bar is green when people play with no scores yet, and falls back by faction name', () => {
 		const noScores = buildStatusEmbed(opts, server, live({ status: { ...status, scores: [] } }));
@@ -327,7 +327,7 @@ describe('join code', () => {
 			expect(fields).toContainEqual(codeField);
 			expect(fields[fields.length - 2]).toEqual(codeField);
 			expect(fields[fields.length - 1].value).toContain('Updated');
-			expect(e.footer?.text).toBe('Warcon');
+			expect(e.footer?.text).toBe('圣女千夜的教堂');
 		}
 	});
 	test('the unreachable card keeps it', () => {

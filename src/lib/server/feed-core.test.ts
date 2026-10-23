@@ -193,7 +193,7 @@ describe('parseBatch', () => {
 		for (const e of [joined, left, state, ended]) expect(parseKill(e)).toBeNull();
 	});
 
-	test('a state or result missing what Warcon reads from it is skipped, not counted', () => {
+	test('a state or result missing what 圣女千夜的教堂 reads from it is skipped, not counted', () => {
 		const b = parseBatch(
 			batch([{ ...state, state: 'Playing' }, { ...ended, factionScores: [] }, joined])
 		);

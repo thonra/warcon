@@ -261,7 +261,7 @@ export function managementView(value: unknown): string {
 					lines.push('');
 				} else lines.push(clean(v));
 			}
-			if (x.length > 12) lines.push(`另有 ${x.length - 12} 项，请在 Warcon 查看`);
+			if (x.length > 12) lines.push(`另有 ${x.length - 12} 项，请在 圣女千夜的教堂 查看`);
 			return;
 		}
 		if (x && typeof x === 'object') {
@@ -321,7 +321,7 @@ export function managementView(value: unknown): string {
 			.filter((s, i, a) => s || a[i - 1])
 			.join('\n')
 			.trim()
-			.slice(0, 2900) || '已读取，详细数据请在 Warcon 查看'
+			.slice(0, 2900) || '已读取，详细数据请在 圣女千夜的教堂 查看'
 	);
 }
 export class ManagementClient implements ManagementPort {
@@ -333,10 +333,10 @@ export class ManagementClient implements ManagementPort {
 	private connect(serverId: string) {
 		const s = this.servers().find((x) => x.id === serverId);
 		if (!s || !s.warconUrl || !s.warconToken)
-			throw new ManagementInputError('请先在后台为此服务器配置 Warcon 管理连接');
+			throw new ManagementInputError('请先在后台为此服务器配置 圣女千夜的教堂 管理连接');
 		const sid = s.warconServerId || s.id;
 		if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(sid))
-			throw new ManagementInputError('Warcon服务器ID无效');
+			throw new ManagementInputError('圣女千夜的教堂服务器ID无效');
 		return { c: this.factory(s), base: '/api/servers/' + encodeURIComponent(sid), sid };
 	}
 	private async rules(serverId: string) {
@@ -441,7 +441,7 @@ export class ManagementClient implements ManagementPort {
 				if (!entry) throw new ManagementInputError('该玩家没有对应的名单记录');
 				version = entry;
 				if (entry.managed && entry.scope === 'org')
-					throw new ManagementInputError('这是跨服务器共享名单，请在 Warcon 的共享名单中撤销');
+					throw new ManagementInputError('这是跨服务器共享名单，请在 圣女千夜的教堂 的共享名单中撤销');
 				if (!entry.managed)
 					action(command === '解除封禁' ? 'unban' : 'reservedRemove', { steamId: args });
 				else {
@@ -649,7 +649,7 @@ export class ManagementClient implements ManagementPort {
 			return '已更新托管名单\n实际生效情况请用 /封禁列表 或 /免排队列表 核对';
 		const label = MANAGEMENT_COMMANDS.find((x) => x.name === command)!.description;
 		return (
-			'已提交并收到 Warcon 确认：' +
+			'已提交并收到 圣女千夜的教堂 确认：' +
 			label +
 			'\n' +
 			managementView(result.result ?? result.trigger ?? result.note ?? {})
@@ -753,7 +753,7 @@ export class ManagementClient implements ManagementPort {
 					'配置中的每日重启：' +
 					(configured ? configured + ' UTC' : '未设置，游戏默认运行24小时后于对局结束时重启') +
 					'\n运行中重启时间：' +
-					clean(live.restartTimeUtc ?? '请在 Warcon 设置页核对') +
+					clean(live.restartTimeUtc ?? '请在 圣女千夜的教堂 设置页核对') +
 					'\n修改 RestartTimeUtc 后可能需下次重启才由游戏读取'
 				);
 			}

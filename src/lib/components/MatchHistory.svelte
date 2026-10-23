@@ -12,7 +12,7 @@
 	<h3 class="caps text-mist-400">Match evidence</h3>
 	<p class="mt-2 text-[12.5px] text-mist-400">
 		{history.scores.samples} retained score observations · Source: RCON polling. Match boundaries are
-		estimated from polling; times below are when Warcon observed or received data.
+		estimated from polling; times below are when 圣女千夜的教堂 observed or received data.
 	</p>
 	{#if history.scores.firstObservedAt && history.scores.lastObservedAt}
 		<p class="mt-1 text-[12px] text-mist-600">

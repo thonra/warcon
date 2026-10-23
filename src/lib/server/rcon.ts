@@ -226,7 +226,7 @@ async function assertTargetStillAllowed(
 				err.status,
 				err.code === 'unresolvable'
 					? "The game server's address does not resolve."
-					: "The game server's address is not one Warcon may connect to. An owner can check it in the server's settings.",
+					: "The game server's address is not one 圣女千夜的教堂 may connect to. An owner can check it in the server's settings.",
 				err.code || 'blocked_host'
 			);
 		}

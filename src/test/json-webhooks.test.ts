@@ -502,7 +502,7 @@ describe.skipIf(!hasTestDb)('JSON webhooks', () => {
 				const [row] = await grantPosts(g);
 				expect([row.state, row.outcome]).toEqual([
 					'failed',
-					'The address is not one Warcon may send to.'
+					'The address is not one 圣女千夜的教堂 may send to.'
 				]);
 				expect(posts).toHaveLength(0);
 				await setUrl(active.webhook.id, PUBLIC('grants'));

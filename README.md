@@ -1,11 +1,11 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="branding/warcon-logo-on-dark.svg">
-    <img src="branding/warcon-logo-on-light.svg" alt="Warcon" height="72">
+    <img src="branding/warcon-logo-on-light.svg" alt="圣女千夜的教堂" height="72">
   </picture>
 </p>
 
-# Warcon
+# 圣女千夜的教堂
 
 A self-hostable, multi-server RCON panel for **WARDOGS** dedicated servers. Bun, SvelteKit and
 Postgres/TimescaleDB, deployed with Docker Compose. Run it beside your game server, on any VPS, or
@@ -115,7 +115,7 @@ What is in the box:
   match score (or the map, or the player count) to the server's name in the browser, as in
   `Demo Clan #1 | 34-27-30`, and keeps it current, at most once a minute.
 - **Group whispers**: one message to everyone on a faction, from the Overview's message box, or to
-  the players ticked on the Players tab. The game has no route for it, so Warcon whispers each of
+  the players ticked on the Players tab. The game has no route for it, so 圣女千夜的教堂 whispers each of
   them in turn and says who got it.
 - **Announcements**: one message on every server of the organisation at once, or on the ones
   ticked, from the Dashboard, the Players page or the organisation's Servers tab. Each server gets it
@@ -128,7 +128,7 @@ What is in the box:
 The protocol was reverse-engineered from `rcon.wardogs.com`; see [docs/wardogs-api.md](docs/wardogs-api.md).
 The map imagery under `static/maps/` is BULKHEAD's, mirrored from the official console by
 `scripts/fetch-map-art.sh` and credited in the footer; it is not under this repository's MIT
-licence (see [static/maps/ATTRIBUTION.md](static/maps/ATTRIBUTION.md)). Warcon is a community
+licence (see [static/maps/ATTRIBUTION.md](static/maps/ATTRIBUTION.md)). 圣女千夜的教堂 is a community
 tool with no affiliation to BULKHEAD or Team17.
 
 Running a public server? Add it to [wardogservers.com](https://wardogservers.com) so players can find it in
@@ -179,7 +179,7 @@ one process for the smallest install. Web and worker talk over a small HTTP rela
 re-checks it inside every write.
 
 The official console calls the game server straight from the browser over plain HTTP, so it cannot
-be hosted on HTTPS and every admin needs the raw RCON password. Warcon keeps the password
+be hosted on HTTPS and every admin needs the raw RCON password. 圣女千夜的教堂 keeps the password
 server-side (AES-GCM encrypted), authenticates admins with its own accounts, checks the role for
 every action, and writes an audit row before answering. Nobody reads the password back, owners
 included, and changing a server's host, port or scheme asks for it again, since the stored one
@@ -224,7 +224,7 @@ as owner:
    Discord. People open it, sign in with Discord, and appear under **Members**, where you can adjust
    their per-server roles.
 
-Warcon now uses one management space. A fresh install automatically selects the **Default**
+圣女千夜的教堂 now uses one management space. A fresh install automatically selects the **Default**
 record created by migrations. When upgrading a database with several organisations, set
 `WARCON_WORKSPACE_ID` to the existing organisation ID to manage, in both web and worker
 environments. Startup refuses a missing organisation, an unknown configured ID, or an ambiguous choice; it never
@@ -262,7 +262,7 @@ rejected as cross-site against the https `ORIGIN`.
 
 Both processes export Prometheus metrics at `/metrics`, the web on its normal port and the worker
 on `WORKER_PORT`, behind the `METRICS_TOKEN` bearer; the endpoint answers 404 until that is set.
-Warcon ships no Prometheus or Grafana of its own: point the ones you already run at it. Everything
+圣女千夜的教堂 ships no Prometheus or Grafana of its own: point the ones you already run at it. Everything
 is counted in memory on paths that already run, never with a query per server, and the few gauges
 that need a look at the database or the scheduler are read once per scrape.
 
@@ -320,7 +320,7 @@ scraped as job `postgres`, which is optional.
 | `RELAY_SECRET` / `RELAY_URL` / `WORKER_PORT`                 | unset / unset / `7700` | Split roles only: the secret web and worker share, where the web finds the worker (`http://worker:7700`), and the worker's port.                                                  |
 | `METRICS_TOKEN`                                              | unset                  | Bearer for `GET /metrics` (Prometheus) on the web and worker processes; the endpoint answers 404 until it is set. See [Metrics](#metrics-prometheus).                             |
 | `POLL_SECONDS` / `POLL_CONCURRENCY`                          | `20` / `128`           | Seeds for two of the runtime settings on a fresh install only; after that the owner edits cadences and budgets under **Admin → Settings** without a restart.                      |
-| `APP_NAME`                                                   | `Warcon`               | Name shown in the UI.                                                                                                                                                             |
+| `APP_NAME`                                                   | `圣女千夜的教堂`               | Name shown in the UI.                                                                                                                                                             |
 | `AUDIT_LOG_READS`                                            | `false`                | Also audit read-only calls (status polls etc.). Noisy.                                                                                                                            |
 | `WARCON_WORKSPACE_ID`                                        | sole organisation      | Existing ID of the fixed management space; required when the database has several organisations. Set identically for web and worker. No data or permissions are merged.           |
 | `MAX_SERVERS_PER_ORG`                                        | `10`                   | Default server limit for the management space. The site owner is exempt.                                                                                                          |
@@ -676,9 +676,9 @@ two seconds on a server with people on it, up to thirty on an empty one), remove
 banned, showing them the ban message as it reads at that moment. A ban, an unban, an edit or an
 expiry therefore takes effect at once and on every server, whether or not the player is connected,
 and no settings file is touched. Each removal is in the audit trail under `system` as
-`ban.enforce`. Two things follow. Bans only hold while Warcon is running and can reach the server:
+`ban.enforce`. Two things follow. Bans only hold while 圣女千夜的教堂 is running and can reach the server:
 if you stop the panel, nobody is kept out. And bans the game holds in its own list (placed with
-the in-game console, another RCON tool, the `ban` action of the API, or by an older Warcon) are
+the in-game console, another RCON tool, the `ban` action of the API, or by an older 圣女千夜的教堂) are
 not the panel's: the Bans tab shows them as _local_ with **Unban**, the panel never adds to or
 lifts them, and on hosts that keep them in `ServerSettings.ini` they come back at a restart until
 you take them out of the file. To move one to the panel, ban the player in the panel and remove
@@ -785,7 +785,7 @@ opens the rule it has.
 | Kill rate watch        | Flags a player, never kicks, when their kills with hand-held weapons in the last N minutes reach a count, or their share of headshots over those kills reaches a percentage once they have at least M; vehicles, their guns and buildables are not counted. The flag goes to the audit trail and the Discord mirror (the post opens the player's page in the panel), and the same player is flagged again only after a cooldown. Needs the [kill feed](#kill-feed), which has no position or aim, so a flag is a reason to look, not proof. The windows are kept in the worker's memory and start over when it restarts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Kill distance watch    | Acts on a player whose kills with the chosen weapons come from at least N metres away, M of them in one match: a defibrillator or a fist reaches a few metres, so the same kill from across the map is a player the game did not stop. The weapons are offered in three lists, as the kill feed names them: hand-held (a new rule starts with the defibrillator; charges that are placed and set off from anywhere are not offered), the vehicles' guns (a Humvee's M249 or minigun turret, the L81 mortar's shells), and the vehicles themselves (a roadkill, or a vehicle blown up with its crew inside: the L81 mortar in this list is not its shells). From 0 m every kill with them counts, one the feed sends without a distance too, so a server can act on each kill with a weapon or a vehicle it does not allow: an infantry-only server can act on whoever kills from a Humvee's turret. It flags them (audit trail and the Discord mirror, whose post opens the player's page), warns them (the rule's text whispered to them, mirrored the same way; a blank text says the weapon is not allowed on this server), kills them and whispers them the rule's text (so a server can answer each Humvee kill with the killer's death: the feed only reports kills, so a player who drives one without killing anybody is not seen), kicks them, or bans them for N days or for good on this server's own ban list or the organisation's, like a ban by hand: every server the ban reaches takes its lists again at once and removes them at its next look, and the ban is lifted from the list. A shorter ban already on that list is made to last as long. A killed, kicked or banned player is left alone for a minute while that lands, so a roadkill of three is one kill; one who does it again after that, that match, is acted on at their next such kill. A flag or a warning comes again in the same match only after the rule's cooldown, and at their first such kill in the next. A warning, a kill and a kick need the player still on when they are sent, and a kill goes within half a minute or not at all (one sent later would land on them doing something else, or on the next map). A kill the game refuses (no living character, presumably) still sends the whisper; with that refused too, the action fails. Two rules that kill on the same weapon each kill. To warn first and kick after, make two rules on the same weapons, the kick's count higher. Needs the [kill feed](#kill-feed), whose distance is between killer and victim; acted on as each kill arrives, and counted per match as the Team kill limit counts. A kill that comes within a minute of the killer's own death is not counted: the player is dead, so it is a round already on its way, and the game credits a vehicle's shell that lands after the vehicle was destroyed to the gunner's own weapon, from wherever the gunner is by then (an M4 kill from 2,300 m). The audit trail notes each kill left out this way, with how long after the death it came; Discord is not told. Editing, switching off or deleting the rule starts the counts over and drops what it had queued. The counts are kept in the worker's memory and start over when it restarts. The rule believes the feed: whoever holds a server's feed token can make it act, so keep bans on every server for rules on servers whose host you trust. |
 | Team balance           | Keeps the open sides within a set number of players of each other (3 by default), closes one faction, or both. Nobody who is playing is moved mid-match: balancing places a player when they arrive (on the side they picked while that keeps within the gap, else on the lighter one), puts back a player who switches onto a side more than the gap bigger than the one they left, and evens everyone up when a new match starts (a map change or the scores starting over). Whoever is on when the rule is switched on or changed, after the worker restarts, when the server comes back from being out of reach, or after two minutes (three looks, at a slower player list cadence) without a look at the player list, counts as placed until the next match, so it never reshuffles the match it walks in on; starting over also forgets who was told and the asks. The side a player was placed on is kept for ten minutes away, so leaving and rejoining on the bigger side is put back too. Optional: keep clan tags together (a short tag in brackets at the front of the name; a preference that yields to the gap; when a new match is evened up, players whose clan is mostly on the other side move first, then those with the fewest clanmates beside them), and SteamIDs it never moves (staff who switch sides themselves). A move made from the Players tab or the API is kept, not put back; one made anywhere else (the game's own console, another balancer) is put back like a switch, so run no other balancer beside it. Right after a match end, placing waits up to 30 seconds from the players' return (the list is empty while the next map loads) while a quarter or more of them have not picked a side, and whom it moves is not decided by list order. Everyone on the closed faction is moved to the smaller other side (or their clan's, within the gap). Every move is the game's own move, sent without the kill the Players tab's Move adds. Moves go out a few at a time as the player list refreshes, so a full server's sort takes about half a minute; moves in flight count toward their side, and one not seen landed within 30 seconds is decided again; a queued move goes out only while the rule still holds that decision, so a retry, a new match or a person moving the player drops it. A player who switches onto the bigger side is put back every time; a player asked to move three times in ten minutes for any other reason, or put back three times without it taking, is left where they are until the ten minutes pass. Watch only lists each move it would make under Actions, as skipped, and moves nobody. Optional names for the sides (e.g. Red and Green) and a whisper, `{team}`, sent once to each player it moves (again after two hours away). One rule per server; changing or switching it off drops its queued moves. Its moves reach Discord only when they fail. What it remembers is the worker's: a restart forgets the moves in flight, who was told, the asks and the sides. A rule saved before balancing existed only closes its faction until balancing is ticked. Nothing to dry-run: faction moves are not in the session history; use Watch only.                                                                                                                                                                                               |
-| Match broadcast        | Announces the result when a match ends and the map as the next one starts, either message optional, with at least N players on (the game shows nobody on while the next map loads, so the announcement waits up to three minutes for the players to be back). A match ends when the map changes or the faction scores fall back to zero (a faction reached the cap, or an admin ended the round; live builds send no score cap or match clock, so Warcon assumes the game's default of 100), so `{faction}` is whoever led at that moment, tied factions named together. Besides the server's placeholders, `{score}` and `{scores}` of the match that ended, `{previous}` (its map), and from the players' lines of it `{mvp}` (the most kills, tied players named together) and `{top}` (the top three with their kills). Sent one poll after the round ends.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Match broadcast        | Announces the result when a match ends and the map as the next one starts, either message optional, with at least N players on (the game shows nobody on while the next map loads, so the announcement waits up to three minutes for the players to be back). A match ends when the map changes or the faction scores fall back to zero (a faction reached the cap, or an admin ended the round; live builds send no score cap or match clock, so 圣女千夜的教堂 assumes the game's default of 100), so `{faction}` is whoever led at that moment, tied factions named together. Besides the server's placeholders, `{score}` and `{scores}` of the match that ended, `{previous}` (its map), and from the players' lines of it `{mvp}` (the most kills, tied players named together) and `{top}` (the top three with their kills). Sent one poll after the round ends.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Restart notice         | Broadcasts a heads-up N minutes before the server's scheduled restart and a message once it is due, optionally repeated every N minutes while the round drags on, with at least N players on. The restart itself lands when the round in progress ends. Follows the server's [game restart](#game-restart) schedule. Besides the server's placeholders, `{minutes}` (to the restart window).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Seeding reward         | Time a player spends on with at most N players counts as seed time, by default banked only once the server has filled (a count the rule sets, else the limit the server reports) with the player still on, so staying until the threshold and leaving, or a few minutes on an empty server, earns nothing (a switch on the rule counts every low minute instead); M minutes of it over the sessions that ended in the last D days earns a reserved slot for E days, with an optional whisper: on this server only (its own reserved-slot list, which needs the Reserved slots capability) or on every server in the organisation (the org list, which needs Shared reserved slots), chosen on the rule. The seeded server applies it at once and, for an org-wide slot, the other servers at their next sync; it lapses on its own and can be earned again; players who already hold a slot here are skipped. Seed time is kept on each session, so the dossier (a total, per server and per session, and the player's progress toward the reward for _Automation_ holders), the leaderboard's Seed time column and the dry run show it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | AFK protection         | While the server seeds (someone on, fewer than the rule's count, 20 by default, and no side has scored), kills everyone on every N minutes (3 by default, 2 to 10), so the game's idle kick, which also runs while a server waits for its players, does not remove the seeders. The panel cannot tell who is idle, so players are killed too. Set the count no higher than the players the server's match starts at. A side scoring or the count being reached turns it off until the server has sat empty for 10 minutes or the game restarts, so a dip below the count mid-match, or the empty list of a map change, never starts it again; switched off and on, it starts from what the server shows then, so switching it on during a match nobody has scored in yet takes that match for seeding until the first score. Switching it off drops a round not yet sent. Its row says whether it is active or paused, and why. Optional broadcasts after each round and once when the match it kept the seeders for goes live (`{goal}` is the count it turns off at). A round is one action in the trail, kept off Discord unless it fails; it goes only within 30 seconds of being decided, while the last look still showed the server seeding, and players who left since are passed over. One rule per server.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -830,8 +830,8 @@ that player alone. A dry run shows `…` for the stats and for whatever else it 
 
 WARDOGS can push every kill to an HTTP endpoint: with `[WDServerFeed] Url` and `Token` set in
 `ServerSettings.ini`, the game process POSTs each kill (killer, victim, weapon or vehicle,
-distance, headshot and other context) a second or two after it happens. Warcon is that endpoint.
-On the server's **Config** tab an org owner clicks **Configure**: Warcon mints a token,
+distance, headshot and other context) a second or two after it happens. 圣女千夜的教堂 is that endpoint.
+On the server's **Config** tab an org owner clicks **Configure**: 圣女千夜的教堂 mints a token,
 writes both keys into the config document and applies; the game reads them at its next restart
 (its scheduled one, see [game restart](#game-restart), or a manual restart). `Url` is the
 panel's origin alone: the game appends `/api/ingest/events` to it by itself. The card shows when
@@ -851,8 +851,8 @@ EventFeedServerName="Your server"
 
 Unlike `[WDServerFeed]`, the game posts to this `Url` exactly as written, so it carries the path.
 Lines copied from the card before 15 October 2026 named the origin alone and never arrive: copy
-the line again and restart the server. The list can hold other endpoints beside Warcon's. After **Replace token**, paste the new line in
-place of the old one. `EventFeedServerName` is the name the game sends with each batch; Warcon
+the line again and restart the server. The list can hold other endpoints beside 圣女千夜的教堂's. After **Replace token**, paste the new line in
+place of the old one. `EventFeedServerName` is the name the game sends with each batch; 圣女千夜的教堂
 goes by the token, so keep one such line if the file already has it.
 
 A token is not a working feed, so the panel checks what actually arrives. A Season 2 server posts
@@ -885,15 +885,15 @@ Season 2 also posts the match's state as it changes, the match's result when it 
 joining and leaving. The state shows on the server's Overview as **Match** (loading the map,
 waiting for players, playing, match over), which the status alone cannot tell; a state from before
 the game last restarted is not shown. The result is the game's own: its winner and final scores go
-on the match in place of what Warcon saw at its last look before the end (a point or two behind,
+on the match in place of what 圣女千夜的教堂 saw at its last look before the end (a point or two behind,
 or the other side in a close finish), and so into the match history, the players' wins and the
-Match broadcast rule. Warcon still decides from its own looks where one match ends and the next
+Match broadcast rule. 圣女千夜的教堂 still decides from its own looks where one match ends and the next
 begins; a result that arrives up to two minutes after that look corrects the match it closed, and
 one naming other factions than the scoreboard's is not used. Every state and result is also kept
 as it came (the `match_events` table: when it arrived, the game's match clock and match id, the
 winner as the game named it and the scores), the game's own record of its matches; a state the
 same as the last one kept is counted (`repeat` in `warcon_feed_kills_total`) rather than kept again.
-Joins and leaves are counted (`other`, see [Metrics](#metrics-prometheus)) and not used: Warcon
+Joins and leaves are counted (`other`, see [Metrics](#metrics-prometheus)) and not used: 圣女千夜的教堂
 reads who is on from the server, as on every build.
 
 What the feed adds: a live kill feed on the server's Overview tab, a **Kills** tab with the whole
@@ -903,7 +903,7 @@ view can be shared), a **Combat** section on Analytics (kills per bucket, weapon
 top killers with headshot share and team kills), a Combat card on every player dossier (weapons,
 most-killed, nemeses, recent kills and deaths), the names players showed in it that were not their
 own (on their dossiers and in the Players searches), the team-kill trigger and the Bounty rule. Team kills are
-inferred: the feed carries no factions, so Warcon uses the factions it observed for both players
+inferred: the feed carries no factions, so 圣女千夜的教堂 uses the factions it observed for both players
 at that moment. Kills are history and are
 never pruned (a TimescaleDB hypertable with compression where the extension is installed). The
 demo server feeds itself once its feed is turned on.
@@ -913,7 +913,7 @@ reboot), so each server has its own. The token is stored encrypted, like the RCO
 shown to org owners only. `POST /api/ingest/events` is the one `/api` route that takes neither a
 session nor an API key, and it is exempt from the CSRF header for the same reason a bearer is.
 Configs written by earlier versions hold `Url=<origin>/api/feed/events`, which the game turns into
-a path Warcon does not serve. Click **Configure** again (the game reads the new `Url` at its next
+a path 圣女千夜的教堂 does not serve. Click **Configure** again (the game reads the new `Url` at its next
 restart), or have the proxy in front of the panel rewrite `/api/feed/events/api/ingest/events` to
 `/api/ingest/events` until then. It has to be a rewrite, not a redirect: the game follows a 301 or
 302 as a GET, which the feed refuses.
@@ -940,7 +940,7 @@ whatever goes to Discord. The Live server name rule takes no actions, so it is n
 
 Posts carry the name and picture the webhook has in Discord (the channel's settings →
 Integrations → Webhooks). A status card keeps the name it was posted under: after renaming the
-webhook, delete the card and Warcon posts it again under the new name.
+webhook, delete the card and 圣女千夜的教堂 posts it again under the new name.
 
 A webhook can also keep a **live status card** for each server it covers (tick _Keep status
 cards in the channel_ on the org page, or open the server's **Settings** tab, paste a webhook and
@@ -970,7 +970,7 @@ the card style, with the public page switches under them.
 ### JSON webhooks
 
 For your own systems (a memberships database, a donor bot), an org owner adds a **JSON webhook**
-on the organisation's overview (ten at most): an HTTPS address Warcon POSTs signed JSON to for each
+on the organisation's overview (ten at most): an HTTPS address 圣女千夜的教堂 POSTs signed JSON to for each
 event ticked on it, for every server or a subset. The one event so far is a
 [Seeding reward](#automation-triggers) grant, sent once the slot is on the list:
 
@@ -1056,13 +1056,13 @@ part of the range's first day and the sessions still open, so a range still star
 A board shows one season at a time, or a range: the **Showing** menu above it lists the official
 WARDOGS seasons, the organisation's own, and the 7, 30 and 90-day and all-time ranges. A season
 is a name and a start, and runs until the next season of its kind starts. The official ones ship
-with Warcon, each from the moment it launched: Season 1 from the early-access release on
+with 圣女千夜的教堂, each from the moment it launched: Season 1 from the early-access release on
 10 September 2026, Season 2 from 15 October 2026 at 16:00 UTC. A new one is added when Bulkhead
 announces it, and starts on its real date even when it is added late. An org owner adds the
 organisation's own on its **Seasons** tab, each from midnight UTC on a day still to come; a
 season that has started can be renamed but not moved or deleted, so its standings stay put, and
 to end one early you start the next. Nothing is reset or deleted: a season's board is a window
-over the history Warcon keeps anyway, so a past season's board is still there and read-only by
+over the history 圣女千夜的教堂 keeps anyway, so a past season's board is still there and read-only by
 nature.
 
 The Seasons tab also sets what the organisation's boards **open on**, in the panel and on the
@@ -1120,7 +1120,7 @@ The purge is audited with the counts.
 
 A WARDOGS server restarts itself when the round in progress ends, once its restart time has come.
 The header's restart countdown, the status cards' "Restarts after this round" and the Restart
-notice and Rotation shuffle rules follow that time, which Warcon takes from the first of these:
+notice and Rotation shuffle rules follow that time, which 圣女千夜的教堂 takes from the first of these:
 
 1. **A time set here.** An org owner can tick _Set the restart time myself_ under **Game restart**
    on the server's Settings tab and give a daily time in UTC. It is used instead of the server's
@@ -1128,7 +1128,7 @@ notice and Rotation shuffle rules follow that time, which Warcon takes from the 
 2. **The server's config.** `RestartTimeUtc=HH:MM` (UTC) in the
    `[/Script/WDGame.WDServerLifecycleSubsystem]` section of `ServerSettings.ini` restarts the game
    daily at that time. The game reads it when it starts, so a change applies from the next
-   restart: Warcon reads it with its hourly look at the server's settings and reads the settings
+   restart: 圣女千夜的教堂 reads it with its hourly look at the server's settings and reads the settings
    again just after each restart, keeps the time the running server started with apart from what
    the file says now, and the panel shows a change waiting for the next restart. Set it on the Config tab.
 3. **24 hours up**, the game's default when neither is set.
@@ -1336,7 +1336,7 @@ the live view).
 			"restartTimeUtcFile": "08:00",
 			"throttledUntil": null,
 			"status": {
-				"serverName": "Warcon Demo Server [fd3596]",
+				"serverName": "圣女千夜的教堂 Demo Server [fd3596]",
 				"map": "Kavkazi",
 				"experiences": ["Bakurani_KOTH_01"],
 				"lighting": "DayLateClear",
@@ -1695,12 +1695,12 @@ at any time; whoever already joined keeps their access until an owner removes th
 
 ### Reaching the game server
 
-Warcon talks to the game's RCON listener over HTTP from its own process, so the panel can run
+圣女千夜的教堂 talks to the game's RCON listener over HTTP from its own process, so the panel can run
 anywhere that can reach `Port` (default 7776) on each game host. Enable the listener in
 `ServerSettings.ini` under `[/Script/WDRCON.WDRCONSettings]`, then connect however suits your setup:
 
-- **Direct.** Set `BindAddress=0.0.0.0` (or the host's public address) and add the server in Warcon
-  with scheme `http`. Restrict the port to Warcon's IP in whatever firewall the game host already
+- **Direct.** Set `BindAddress=0.0.0.0` (or the host's public address) and add the server in 圣女千夜的教堂
+  with scheme `http`. Restrict the port to 圣女千夜的教堂's IP in whatever firewall the game host already
   has: the hosting provider's panel, `ufw`, a cloud security group. The RCON password is sent as a
   bearer token on every request, so the firewall is what keeps it private.
 - **Private network.** Over WireGuard, Tailscale, or a provider LAN, bind the listener to the
@@ -1734,7 +1734,7 @@ RCON password and ask the site owner to remove their copy. To give another group
 it, invite them to the organisation that holds it, with the role they need on that server.
 
 The ini comments say a non-loopback `BindAddress` expects TLS and `PasswordHash=`; the official web
-console connects over plain `http` regardless, and so can Warcon.
+console connects over plain `http` regardless, and so can 圣女千夜的教堂.
 
 ## Local development
 
@@ -1806,17 +1806,17 @@ What a change needs before it is merged:
 Use whatever tools help you write it, including AI assistants; you do not need to declare which.
 The change is what gets reviewed: does it work, is it tested, does the message say what it does.
 You are the author of what you submit, so understand it and be ready to answer questions about it.
-Warcon takes the same position the Linux kernel does, put plainly by Linus Torvalds in
+圣女千夜的教堂 takes the same position the Linux kernel does, put plainly by Linus Torvalds in
 [July 2026](https://lore.kernel.org/linux-media/CAHk-=wi4zC+Ze8e+p3tMv8TtG_80KzsZ1syL9anBtmEh5Z40vg@mail.gmail.com/):
 AI is a tool like any other, contributions are judged on technical merit, and arguing against
 other people using it is not a conversation this project will have.
 
 The protocol notes in [docs/wardogs-api.md](docs/wardogs-api.md) describe what the game server
-exposes; anything not in there is unknown to Warcon as well.
+exposes; anything not in there is unknown to 圣女千夜的教堂 as well.
 
-## Supporting Warcon
+## Supporting 圣女千夜的教堂
 
-Warcon is free and open source. If it helps your community, you can support it through
+圣女千夜的教堂 is free and open source. If it helps your community, you can support it through
 [GitHub Sponsors](https://github.com/sponsors/xCausxn).
 
 ## Layout

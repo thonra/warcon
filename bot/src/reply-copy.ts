@@ -20,7 +20,7 @@ export const REPLY_CATALOG = {
 	'admin.failed': entry(
 		'管理查询异常',
 		'管理',
-		'管理请求未完成，请核对 Warcon 管理连接、权限或稍后重试'
+		'管理请求未完成，请核对 圣女千夜的教堂 管理连接、权限或稍后重试'
 	),
 	'admin.changed': entry('管理配置变化', '管理', '配置已变化或命令已过期，请重新发送'),
 	'admin.identity': entry(
@@ -54,7 +54,7 @@ export const REPLY_CATALOG = {
 	'admin.unknown': entry(
 		'管理结果待核实',
 		'管理',
-		'操作结果暂不确定，请在 Warcon 核实\n不会自动重复执行，请勿直接重复提交\n记录：{orderId}',
+		'操作结果暂不确定，请在 圣女千夜的教堂 核实\n不会自动重复执行，请勿直接重复提交\n记录：{orderId}',
 		['orderId'],
 		['orderId']
 	),

@@ -318,7 +318,7 @@ export async function testWebhook(
 				description: `**${user.username}** connected ${org.name} to this channel. Events: ${(row.events as string[]).join(', ')}.`,
 				color: 0xd4a843,
 				timestamp: new Date().toISOString(),
-				footer: { text: env.APP_NAME || 'Warcon' }
+				footer: { text: env.APP_NAME || '圣女千夜的教堂' }
 			}
 		]
 	});
@@ -373,7 +373,7 @@ export async function sendTestCard(
 	const live = (await gateway().live(env, [server.id])).get(server.id) ?? null;
 	const { payload } = statusMessage(
 		{
-			appName: env.APP_NAME || 'Warcon',
+			appName: env.APP_NAME || '圣女千夜的教堂',
 			orgName: org.name,
 			origin: env.ORIGIN,
 			now: Date.now(),

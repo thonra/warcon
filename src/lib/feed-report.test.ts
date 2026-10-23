@@ -146,7 +146,7 @@ describe('feedDiagnosis', () => {
 	const diagnose = (r: ReturnType<typeof feedReportOf>, state = 'silent' as const) =>
 		feedDiagnosis(r!, ORIGIN, state);
 
-	test("TLR #1: Warcon's line names the site alone", () => {
+	test("TLR #1: 圣女千夜的教堂's line names the site alone", () => {
 		const d = diagnose(feedReportOf(TLR));
 		expect([d.fault, d.endpoint?.index, d.others]).toEqual(['path', 0, 1]);
 	});

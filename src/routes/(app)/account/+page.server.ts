@@ -173,7 +173,7 @@ export const actions: Actions = {
 		let totpURI = '';
 		try {
 			const res = await locals.auth!.api.enableTwoFactor({
-				body: { password: hasPassword ? password : undefined, issuer: env.APP_NAME || 'Warcon' },
+				body: { password: hasPassword ? password : undefined, issuer: env.APP_NAME || '圣女千夜的教堂' },
 				headers: request.headers
 			});
 			totpURI = (res as { totpURI?: string }).totpURI ?? '';

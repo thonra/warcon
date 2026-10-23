@@ -592,7 +592,7 @@ function comeUp(s: State): void {
 function stateFor(key: string): State {
 	let s = states.get(key);
 	if (!s) {
-		s = seed(`Warcon Demo Server [${key.slice(0, 6)}]`);
+		s = seed(`圣女千夜的教堂 Demo Server [${key.slice(0, 6)}]`);
 		if (startupMap()) comeUp(s);
 		if (prematch()) for (const f of s.factions) f.score = 0;
 		states.set(key, s);

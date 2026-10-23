@@ -29,7 +29,7 @@ const TEST_ROUTE = join(
 	'+server.ts'
 );
 
-describe.skipIf(!hasTestDb)("the name on Warcon's Discord posts", () => {
+describe.skipIf(!hasTestDb)("the name on 圣女千夜的教堂's Discord posts", () => {
 	let env: Env;
 	let w: World;
 	const token = randomBytes(34).toString('hex');

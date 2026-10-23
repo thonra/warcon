@@ -20,7 +20,7 @@ const count = (value: unknown): value is number =>
 	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const finite = (value: unknown): value is number =>
 	typeof value === 'number' && Number.isFinite(value);
-const malformed = () => new WarconError('Warcon 返回的数据不完整，请稍后查询操作状态。');
+const malformed = () => new WarconError('圣女千夜的教堂 返回的数据不完整，请稍后查询操作状态。');
 
 function serverPath(serverId: string): string {
 	if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(serverId))
@@ -111,7 +111,7 @@ export class WarconClient implements WarconPort {
 			throw new Error('WARCON_TOKEN 配置不正确。');
 		const timeoutMs = options.timeoutMs ?? 15_000;
 		if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000)
-			throw new Error('Warcon 请求超时必须介于 1 与 120000 毫秒之间。');
+			throw new Error('圣女千夜的教堂 请求超时必须介于 1 与 120000 毫秒之间。');
 		this.baseUrl = base.toString().replace(/\/+$/, '');
 		this.token = options.token;
 		this.timeoutMs = timeoutMs;
@@ -129,7 +129,7 @@ export class WarconClient implements WarconPort {
 		const timeout = new Promise<never>((_, reject) => {
 			timer = setTimeout(() => {
 				controller.abort();
-				reject(new WarconError('Warcon 请求超时，操作结果需要核对。'));
+				reject(new WarconError('圣女千夜的教堂 请求超时，操作结果需要核对。'));
 			}, this.timeoutMs);
 		});
 		try {
@@ -172,7 +172,7 @@ export class WarconClient implements WarconPort {
 					if (!response.ok || body.ok !== true) {
 						// Never repeat upstream text: it can echo a whisper, token or internal address.
 						throw new WarconError(
-							`Warcon 未确认操作成功（HTTP ${response.status}）。`,
+							`圣女千夜的教堂 未确认操作成功（HTTP ${response.status}）。`,
 							refusal(response.status, body, action) ? 'refused' : 'unknown'
 						);
 					}
@@ -183,7 +183,7 @@ export class WarconClient implements WarconPort {
 			]);
 		} catch (error) {
 			if (error instanceof WarconError) throw error;
-			throw new WarconError('无法确认 Warcon 的响应，请稍后查询操作状态。');
+			throw new WarconError('无法确认 圣女千夜的教堂 的响应，请稍后查询操作状态。');
 		} finally {
 			clearTimeout(timer);
 			controller.abort();

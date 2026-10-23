@@ -176,7 +176,7 @@ describe('sendEvent', () => {
 			expect(r).toEqual({
 				ok: false,
 				status: null,
-				error: 'The address is not one Warcon may send to.',
+				error: 'The address is not one 圣女千夜的教堂 may send to.',
 				retry: false
 			});
 		}

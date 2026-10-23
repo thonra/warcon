@@ -41,7 +41,7 @@ function fixture(respond?: (action: string, call: Call) => Response | Promise<Re
 	return { client, calls };
 }
 
-describe('Warcon scoped adapter', () => {
+describe('圣女千夜的教堂 scoped adapter', () => {
 	test('reads fresh snapshots directly and preserves string Steam IDs', async () => {
 		const { client, calls } = fixture();
 		const before = Date.now();

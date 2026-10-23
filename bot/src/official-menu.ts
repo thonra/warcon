@@ -153,7 +153,7 @@ export class OfficialMenus implements MenuPort {
 				panelId: null,
 				version: null,
 				items: [],
-				remark: 'Warcon 群聊自助菜单'
+				remark: '圣女千夜的教堂 群聊自助菜单'
 			};
 		const panelId = global[0].panel_id;
 		if (typeof panelId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(panelId))

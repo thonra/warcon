@@ -66,7 +66,7 @@ async function main(): Promise<void> {
 			const [id, outcome, ...reason] = process.argv.slice(3);
 			if (!id || !['succeeded', 'refunded'].includes(outcome) || !reason.join(' ').trim())
 				throw new Error(
-					'停服并核对 Warcon 审计后使用：resolve <操作ID> succeeded|refunded <核对理由>'
+					'停服并核对 圣女千夜的教堂 审计后使用：resolve <操作ID> succeeded|refunded <核对理由>'
 				);
 			store.resolveOperation(id, outcome as 'succeeded' | 'refunded', reason.join(' '));
 			console.log('已记录核对结果。');
@@ -214,7 +214,7 @@ async function main(): Promise<void> {
 			void connection?.refresh().catch(() => console.error('NapCat 连接状态更新失败。'));
 		}, 1000);
 		console.log(
-			`Warcon QQ 机器人已监听 ${config!.host}:${config!.port}，已配置 ${config!.groups.length} 个群。`
+			`圣女千夜的教堂 QQ 机器人已监听 ${config!.host}:${config!.port}，已配置 ${config!.groups.length} 个群。`
 		);
 		await new Promise<void>((done) => {
 			const stop = () => {

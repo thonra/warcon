@@ -24,7 +24,7 @@ export async function resolveWorkspaceId(db: Db, configured?: string): Promise<s
 	if (rows.length === 1) return rows[0].id;
 	if (!rows.length)
 		throw new Error(
-			'No management space exists. Restore the organisation data before starting Warcon.'
+			'No management space exists. Restore the organisation data before starting 圣女千夜的教堂.'
 		);
 	throw new Error(
 		'Multiple organisations exist. Set WARCON_WORKSPACE_ID to the management space to use.'

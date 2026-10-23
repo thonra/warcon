@@ -152,7 +152,7 @@ async function refreshHook(
 	}
 	const gap = Math.max(hook.statusIntervalS * 1000, list.length * GAP_PER_SERVER_MS);
 	const opts = {
-		appName: env.APP_NAME || 'Warcon',
+		appName: env.APP_NAME || '圣女千夜的教堂',
 		orgName,
 		origin: env.ORIGIN,
 		now,

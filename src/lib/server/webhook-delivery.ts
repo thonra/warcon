@@ -329,7 +329,7 @@ export async function notifyBounty(
 		const hooks = hooksFor(await enabledWebhooks(env, orgId), 'bounties', serverId);
 		if (!hooks.length) return;
 		for (const c of cards) {
-			const embed = buildBountyEmbed(env.APP_NAME || 'Warcon', serverName, c);
+			const embed = buildBountyEmbed(env.APP_NAME || '圣女千夜的教堂', serverName, c);
 			for (const hook of hooks) enqueue(env, hook, embed);
 		}
 	} catch (err) {
@@ -602,7 +602,7 @@ export async function notifyWebhooks(env: Env, row: AuditRow): Promise<void> {
 			if (event === 'triggers' && !takesRule(hook, row.action)) continue;
 			const only = hook.serverIds as string[] | null;
 			if (only && only.length && (!row.serverId || !only.includes(row.serverId))) continue;
-			embed ??= withDossierLink(env, row, buildEmbed(env.APP_NAME || 'Warcon', row));
+			embed ??= withDossierLink(env, row, buildEmbed(env.APP_NAME || '圣女千夜的教堂', row));
 			enqueue(env, hook, embed);
 		}
 	} catch (err) {
@@ -665,7 +665,7 @@ export async function notifyWatchedJoins(
 		const now = new Date().toISOString();
 		for (const p of await watchedAmong(env, orgId, joined)) {
 			const embed = buildWatchedJoinEmbed(
-				env.APP_NAME || 'Warcon',
+				env.APP_NAME || '圣女千夜的教堂',
 				serverName,
 				p,
 				now,
@@ -693,7 +693,7 @@ export async function notifyTeamKills(
 		const hooks = hooksFor(await enabledWebhooks(env, orgId), 'teamkills', serverId);
 		if (!hooks.length) return;
 		for (const k of teamKills) {
-			const embed = buildTeamKillEmbed(env.APP_NAME || 'Warcon', serverName, k);
+			const embed = buildTeamKillEmbed(env.APP_NAME || '圣女千夜的教堂', serverName, k);
 			for (const hook of hooks) enqueue(env, hook, embed);
 		}
 	} catch (err) {

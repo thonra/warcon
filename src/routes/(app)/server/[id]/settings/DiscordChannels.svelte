@@ -176,8 +176,8 @@
 		/404|Unknown Webhook|401|403/i.test(error)
 			? 'Discord no longer knows this webhook. Disconnect it and connect a new one.'
 			: /rate limit/i.test(error)
-				? 'Discord is rate limiting the channel; Warcon backs off and retries.'
-				: 'Warcon retries every minute.';
+				? 'Discord is rate limiting the channel; 圣女千夜的教堂 backs off and retries.'
+				: '圣女千夜的教堂 retries every minute.';
 	async function toggle(w: WebhookView) {
 		const ok = await run(
 			() => api('PATCH', `${orgPath}/webhooks/${w.id}`, { enabled: !w.enabled }),
@@ -209,7 +209,7 @@
 	</div>
 	<p class="mb-3 text-[13px] text-mist-400">
 		A channel is one Discord webhook URL, and each channel carries what you choose for it. Two
-		things belong here: a <b>status card</b> that Warcon posts once and edits in place (players
+		things belong here: a <b>status card</b> that 圣女千夜的教堂 posts once and edits in place (players
 		online, map, a score bar per faction and who is on each side; <b>pin it in Discord</b> so it
 		stays at the top), and <b>team kills</b>, one message each as the kill feed reports them. Use a
 		separate channel for each if you want them apart. Mirrors of admin actions (bans, kicks, trigger

@@ -81,7 +81,7 @@ describe('buildEmbed', () => {
 		durationMs: 12
 	};
 	test('names the action, actor, target and server', () => {
-		const e = buildEmbed('Warcon', row);
+		const e = buildEmbed('圣女千夜的教堂', row);
 		expect(e.title).toBe('Kick');
 		expect(e.description).toContain('**james** → `76561198000000001`');
 		expect(e.description).toContain('Server: EU #1');
@@ -91,7 +91,7 @@ describe('buildEmbed', () => {
 	});
 	test('a rule posts under the name the webhook dialog gives its kind', () => {
 		for (const { kind, label } of RULE_KINDS) {
-			const e = buildEmbed('Warcon', { ...row, category: 'trigger', action: `trigger.${kind}` });
+			const e = buildEmbed('圣女千夜的教堂', { ...row, category: 'trigger', action: `trigger.${kind}` });
 			expect({ kind, title: e.title.toLowerCase() }).toEqual({
 				kind,
 				title: `trigger · ${label.toLowerCase()}`
@@ -99,7 +99,7 @@ describe('buildEmbed', () => {
 		}
 	});
 	test('failures are red and say so', () => {
-		const e = buildEmbed('Warcon', {
+		const e = buildEmbed('圣女千夜的教堂', {
 			...row,
 			outcome: 'denied',
 			status: 403,
@@ -110,7 +110,7 @@ describe('buildEmbed', () => {
 	});
 	test('a server added, refused or deleted never says where RCON listens', () => {
 		for (const action of ['server.create', 'server.update', 'server.delete']) {
-			const e = buildEmbed('Warcon', {
+			const e = buildEmbed('圣女千夜的教堂', {
 				...row,
 				category: 'server',
 				action,
@@ -159,12 +159,12 @@ describe('names a player chose, in a staff channel', () => {
 			userAgent: 'curl',
 			durationMs: 12
 		};
-		const e = buildEmbed('Warcon', base);
+		const e = buildEmbed('圣女千夜的教堂', base);
 		intact(e.description);
 		// the target stays inside its code span
 		expect(e.description).toContain('→ `76561198000000001ˋ [x](evil.example) ˋ`\nServer: EU #1');
 		// a message that starts with outside text starts no heading
-		const heading = buildEmbed('Warcon', {
+		const heading = buildEmbed('圣女千夜的教堂', {
 			...base,
 			message: '# Free admin at https://evil.example'
 		});
@@ -172,7 +172,7 @@ describe('names a player chose, in a staff channel', () => {
 	});
 	test('a team kill and a watched join carry the names as text', () => {
 		intact(
-			buildTeamKillEmbed('Warcon', 'EU #1', {
+			buildTeamKillEmbed('圣女千夜的教堂', 'EU #1', {
 				eventId: 'x',
 				ts: '2026-09-28T12:00:00.000Z',
 				map: 'Kavkazi',
@@ -189,7 +189,7 @@ describe('names a player chose, in a staff channel', () => {
 		);
 		intact(
 			buildWatchedJoinEmbed(
-				'Warcon',
+				'圣女千夜的教堂',
 				'EU #1',
 				{ steamId: '76561198000000001', name, reason: 'alt' },
 				'2026-09-28T12:00:00.000Z'
@@ -200,7 +200,7 @@ describe('names a player chose, in a staff channel', () => {
 
 describe('buildTeamKillEmbed', () => {
 	test('names both players, the weapon, the distance and the server', () => {
-		const e = buildTeamKillEmbed('Warcon', 'TLR #1', {
+		const e = buildTeamKillEmbed('圣女千夜的教堂', 'TLR #1', {
 			eventId: 'x',
 			ts: '2026-09-16T20:00:00.000Z',
 			map: 'Kavkazi',
@@ -219,7 +219,7 @@ describe('buildTeamKillEmbed', () => {
 			'**Alpha** → **Bravo** (Valkyra)\nAK74 · 40 m · headshot\nServer: TLR #1 · Kavkazi'
 		);
 		expect(e.timestamp).toBe('2026-09-16T20:00:00.000Z');
-		expect(e.footer?.text).toBe('Warcon');
+		expect(e.footer?.text).toBe('圣女千夜的教堂');
 	});
 });
 
@@ -233,7 +233,7 @@ describe('watched join and dossier links', () => {
 	});
 	test('the post names the player, why, and where, and opens their page', () => {
 		const e = buildWatchedJoinEmbed(
-			'Warcon',
+			'圣女千夜的教堂',
 			'TLR #1',
 			{ steamId: '76561198000000001', name: 'Krieger', reason: 'alt of a banned player' },
 			'2026-09-22T00:00:00.000Z',
@@ -245,7 +245,7 @@ describe('watched join and dossier links', () => {
 		expect(e.description).toContain('alt of a banned player');
 		expect(e.description).toContain('TLR #1');
 		expect(
-			buildWatchedJoinEmbed('Warcon', 'x', { steamId: '1', name: 'a', reason: '' }, 't').url
+			buildWatchedJoinEmbed('圣女千夜的教堂', 'x', { steamId: '1', name: 'a', reason: '' }, 't').url
 		).toBeUndefined();
 	});
 });

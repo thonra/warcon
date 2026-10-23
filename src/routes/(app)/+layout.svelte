@@ -234,7 +234,7 @@
 	{@render children()}
 </main>
 <footer class="page-x pb-6 text-[12px] text-mist-600">
-	Map imagery &copy; BULKHEAD, from the official WARDOGS RCON console. Warcon is a community tool
+	Map imagery &copy; BULKHEAD, from the official WARDOGS RCON console. 圣女千夜的教堂 is a community tool
 	and is not affiliated with BULKHEAD or Team17.
 	{#if data.supportUrl}
 		<a

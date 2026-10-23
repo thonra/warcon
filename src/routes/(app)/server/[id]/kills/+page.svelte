@@ -258,6 +258,6 @@
 	<p class="note">
 		Every kill the game's feed delivered, kept for good. Names link to the player's dossier; a
 		SteamID under a name narrows the list to that player. Team kills are inferred from the factions
-		Warcon observed at the time.
+		圣女千夜的教堂 observed at the time.
 	</p>
 </div>

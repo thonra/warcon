@@ -154,7 +154,7 @@
 			</table>
 		</div>
 		<p class="note">
-			Bulkhead's seasons, the same for every community, each from the moment it launched. Warcon
+			Bulkhead's seasons, the same for every community, each from the moment it launched. 圣女千夜的教堂
 			adds each one when it is announced; they can't be changed here.
 		</p>
 	</div>

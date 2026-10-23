@@ -155,7 +155,7 @@ export async function assertReachableTarget(
 	if (priv && !allowPrivate)
 		throw new ApiError(
 			403,
-			`${where(priv)} a private address. Only publicly reachable game servers can be added here. If the game server shares a machine or network with Warcon, ask the site owner to add it.`,
+			`${where(priv)} a private address. Only publicly reachable game servers can be added here. If the game server shares a machine or network with 圣女千夜的教堂, ask the site owner to add it.`,
 			'blocked_host'
 		);
 	return resolved;

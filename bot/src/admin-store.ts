@@ -268,13 +268,13 @@ export class AdminStore {
 				)
 			)
 				throw new AdminValidationError('主机只填写IP或域名，不要包含协议、端口或路径。');
-			let warconUrl = text(raw.warconUrl, 'Warcon地址', 2048, raw.mode === 'wardogs');
+			let warconUrl = text(raw.warconUrl, '圣女千夜的教堂地址', 2048, raw.mode === 'wardogs');
 			if (warconUrl) {
 				try {
 					warconUrl = httpUrl(warconUrl);
 				} catch {
 					throw new AdminValidationError(
-						'Warcon地址必须是有效HTTP(S)地址，不能包含凭据、查询或片段。'
+						'圣女千夜的教堂地址必须是有效HTTP(S)地址，不能包含凭据、查询或片段。'
 					);
 				}
 			}
@@ -285,18 +285,18 @@ export class AdminStore {
 				return value;
 			};
 			const password = secret(raw.password, old.get(raw.id)?.password, 'API密码');
-			const warconToken = secret(raw.warconToken, old.get(raw.id)?.warconToken, 'Warcon令牌');
+			const warconToken = secret(raw.warconToken, old.get(raw.id)?.warconToken, '圣女千夜的教堂令牌');
 			const warconServerId = raw.warconServerId ?? old.get(raw.id)?.warconServerId;
 			if (
 				warconServerId !== undefined &&
 				(typeof warconServerId !== 'string' ||
 					(warconServerId !== '' && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(warconServerId)))
 			)
-				throw new AdminValidationError('Warcon 管理服务器ID格式无效');
+				throw new AdminValidationError('圣女千夜的教堂 管理服务器ID格式无效');
 			if (raw.mode === 'wardogs' && !password)
 				throw new AdminValidationError('请填写WARDOGS API密码。');
 			if (raw.mode === 'warcon' && !warconToken)
-				throw new AdminValidationError('请填写Warcon API令牌。');
+				throw new AdminValidationError('请填写圣女千夜的教堂 API令牌。');
 			return {
 				id: raw.id,
 				name: text(raw.name, '服务器名称', 100),

@@ -11,5 +11,5 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			code: 'config'
 		});
 	}
-	return { user: locals.user, appName: env.APP_NAME || 'Warcon', supportUrl: supportUrl(env) };
+	return { user: locals.user, appName: env.APP_NAME || '圣女千夜的教堂', supportUrl: supportUrl(env) };
 };

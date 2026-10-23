@@ -143,7 +143,7 @@ const ROLES = {
 function build(env: Env) {
 	const discord = discordEnabled(env);
 	return betterAuth({
-		appName: env.APP_NAME || 'Warcon',
+		appName: env.APP_NAME || '圣女千夜的教堂',
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
 		// Better Auth logs a failed endpoint's error as it is, and a failed query's message lists its
@@ -288,14 +288,14 @@ function build(env: Env) {
 			}),
 			admin({ ac, roles: ROLES, defaultRole: 'member', adminRoles: ['owner'] }),
 			twoFactor({
-				issuer: env.APP_NAME || 'Warcon',
+				issuer: env.APP_NAME || '圣女千夜的教堂',
 				// Passkey-only and Discord-only accounts have no password to confirm with.
 				allowPasswordless: true,
 				backupCodeOptions: { storeBackupCodes: 'encrypted' }
 			}),
 			passkey({
 				rpID: new URL(env.ORIGIN).hostname,
-				rpName: env.APP_NAME || 'Warcon',
+				rpName: env.APP_NAME || '圣女千夜的教堂',
 				origin: env.ORIGIN,
 				registration: {
 					// Signed-in users add passkeys to their own account (the plugin still uses the session

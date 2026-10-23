@@ -19,6 +19,9 @@ import type { WarconPort } from './contracts';
 import { randomUUID } from 'node:crypto';
 import { OfficialMenus } from './official-menu';
 import type { ReplyOverrides } from './reply-copy';
+import { ManagerStore } from './manager-store';
+import { ManagementHandler } from './management';
+import { ManagementClient } from './management-client';
 
 async function main(): Promise<void> {
 	process.umask(0o077);
@@ -48,6 +51,8 @@ async function main(): Promise<void> {
 	let inbox: Inbox | undefined;
 	let adminStore: AdminStore | undefined;
 	let official: OfficialBot | undefined;
+	let managerStore: ManagerStore | undefined;
+	let management: ManagementHandler | undefined;
 	let replyTemplates: ReplyOverrides = {};
 	const currentReplies = () => replyTemplates;
 	try {
@@ -92,15 +97,23 @@ async function main(): Promise<void> {
 			const auth = config!.managed;
 			adminStore = new AdminStore(path, auth.masterKey);
 			await adminStore.initialize(auth.username, auth.password);
+			managerStore = new ManagerStore(path);
 			replyTemplates = adminStore.getReplies().templates;
 			let current: ManagedSettings = adminStore.getSettings();
 			messaging = current.messaging ?? defaultMessaging();
 			config!.groups = current.groups;
+			management = new ManagementHandler(
+				managerStore,
+				new ManagementClient(() => current.servers),
+				() => config!.revision,
+				currentReplies
+			);
 			warcon = new ManagedWarcon(
 				() => current.servers,
 				() => revision
 			);
 			admin = new AdminApi(adminStore, store, {
+				managers: managerStore,
 				publicOrigin: auth.origin,
 				onRepliesChanged: () => {
 					replyTemplates = adminStore!.getReplies().templates;
@@ -144,10 +157,16 @@ async function main(): Promise<void> {
 				inboxStats: () => inbox!.stats()
 			});
 		} else warcon = new WarconClient({ baseUrl: config!.warconUrl, token: config!.warconToken });
-		const handler = new CommandHandler(store, warcon, {
+		const publicHandler = new CommandHandler(store, warcon, {
 			configurationRevision: () => config!.revision,
 			replyTemplates: currentReplies
 		});
+		const handler = {
+			handle: async (
+				message: import('./contracts').BotMessage,
+				group: import('./contracts').GroupConfig
+			) => (await management?.handle(message, group)) ?? publicHandler.handle(message, group)
+		};
 		official = new OfficialBot(config!, inbox, handler, undefined, undefined, currentReplies);
 		official.configure(messaging);
 		const bot = new NapCatBot(
@@ -163,7 +182,7 @@ async function main(): Promise<void> {
 		const server = Bun.serve({
 			hostname: config!.host,
 			port: config!.port,
-			maxRequestBodySize: 65536,
+			maxRequestBodySize: 524288,
 			fetch: async (request) => {
 				const route = new URL(request.url).pathname;
 				if (
@@ -216,6 +235,7 @@ async function main(): Promise<void> {
 		await connection?.refresh();
 	} finally {
 		official?.stop();
+		managerStore?.close();
 		adminStore?.close();
 		inbox?.close();
 		store?.close();

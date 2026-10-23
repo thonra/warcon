@@ -1,5 +1,6 @@
 import { QQBot, type QQBotOptions } from '@tencent-connect/qqbot-nodejs';
 import type { MessagingSettings } from './admin-contracts';
+import { managementInput } from './management-catalog';
 
 export interface MenuItem {
 	type: 'command' | 'link';
@@ -55,6 +56,8 @@ export function validateMenu(raw: unknown): MenuItem[] {
 			throw new MenuError(400, '菜单项格式无效');
 		const name = item.type === 'command' ? item.name.trim().replace(/^\/+/, '') : item.name.trim();
 		const desc = item.desc.trim();
+		if (item.type === 'command' && managementInput(name))
+			throw new MenuError(400, '管理命令不能加入群聊菜单');
 		if (
 			!name ||
 			width(name) > 14 ||

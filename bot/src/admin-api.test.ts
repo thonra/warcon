@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AdminStore } from './admin-store';
 import { BotStore } from './store';
+import { ManagerStore } from './manager-store';
 import { AdminApi, type AdminHooks } from './admin-api';
 import type { SettingsUpdate } from './admin-contracts';
 
@@ -417,4 +418,38 @@ test('menu changes require admin authentication and CSRF and checkpoint before a
 	expect(beforeWrite).toBe(true);
 	expect(saved).toBe(1);
 	expect(f.changed()).toBe(0);
+});
+
+test('manager allowlist requires authenticated CSRF writes, validates scope and persists in the existing SQLite backup', async () => {
+	const f = await setup();
+	const managers = new ManagerStore(join(f.folder, 'bot.sqlite'));
+	stores.push(managers);
+	f.hooks.managers = managers;
+	expect((await f.call('/managers')).status).toBe(401);
+	await f.login();
+	await f.call('/config', 'PUT', settings());
+	const before = f.admin.publicSettings();
+	const payload = {
+		revision: 0,
+		members: [{ qq: '694665944', label: 'owner', enabled: true, serverIds: ['alpha'] }]
+	};
+	expect((await f.call('/managers', 'PUT', payload, { 'x-csrf-token': 'bad' })).status).toBe(403);
+	expect(
+		(
+			await f.call('/managers', 'PUT', {
+				...payload,
+				members: [{ ...payload.members[0], serverIds: ['unknown'] }]
+			})
+		).status
+	).toBe(400);
+	expect((await f.call('/managers', 'PUT', payload)).status).toBe(200);
+	expect((await f.call('/managers', 'PUT', payload)).status).toBe(409);
+	expect(f.admin.publicSettings()).toEqual(before);
+	expect(managers.identities()).toEqual([]);
+	const backup = await f.call('/backup');
+	const target = join(f.folder, 'managers-restored.sqlite');
+	writeFileSync(target, Buffer.from(await backup.arrayBuffer()));
+	const restored = new ManagerStore(target);
+	stores.push(restored);
+	expect(restored.policy().members).toEqual(payload.members);
 });

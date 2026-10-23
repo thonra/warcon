@@ -4,6 +4,7 @@ import type { BotHandler, BotMessage } from './contracts';
 import { Inbox } from './inbox';
 import type { NapCatConnection } from './napcat-connection';
 import { groupReply, renderReply, type ReplyOverrides } from './reply-copy';
+import { managementInput } from './management-catalog';
 
 export type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -57,7 +58,13 @@ export function parseMessage(event: unknown, selfId: string, now: number): BotMe
 		else return null;
 	}
 	text = text.trim().replace(/^／/, '/');
-	if (!text || text.length > 300 || (!text.startsWith('/') && !mentioned)) return null;
+	if (
+		!text ||
+		text.length > 2048 ||
+		(text.length > 300 && !managementInput(text)) ||
+		(!text.startsWith('/') && !mentioned)
+	)
+		return null;
 	if (!text.startsWith('/')) text = '/' + text;
 	return { id, groupId, userId, text, time: e.time * 1000 };
 }

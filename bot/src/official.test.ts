@@ -793,3 +793,17 @@ test('editing reply presentation changes outgoing text on the existing connectio
 	expect(f.c.revision).toBe('v1');
 	expect(f.bot.status().online).toBe(true);
 });
+
+test('hidden management replies do not expose the ordinary command keyboard', async () => {
+	const f = fixture();
+	await f.client.emit('message', {}, raw({ content: '/管理帮助' }));
+	await f.bot.pump();
+	expect(f.client.posts).toHaveLength(1);
+	expect((f.client.posts[0]?.[3] as any)?.keyboard).toBeUndefined();
+});
+
+test('long management JSON commands are accepted without widening ordinary message limits', () => {
+	const content = '/规则创建 ping_kick ' + JSON.stringify({ reason: 'x'.repeat(350) });
+	expect(officialMessage(raw({ content }), APP, NOW)?.text).toBe(content);
+	expect(officialMessage(raw({ content: '/帮助 ' + 'x'.repeat(350) }), APP, NOW)).toBeNull();
+});

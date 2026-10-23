@@ -286,6 +286,13 @@ export class AdminStore {
 			};
 			const password = secret(raw.password, old.get(raw.id)?.password, 'API密码');
 			const warconToken = secret(raw.warconToken, old.get(raw.id)?.warconToken, 'Warcon令牌');
+			const warconServerId = raw.warconServerId ?? old.get(raw.id)?.warconServerId;
+			if (
+				warconServerId !== undefined &&
+				(typeof warconServerId !== 'string' ||
+					(warconServerId !== '' && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(warconServerId)))
+			)
+				throw new AdminValidationError('Warcon 管理服务器ID格式无效');
 			if (raw.mode === 'wardogs' && !password)
 				throw new AdminValidationError('请填写WARDOGS API密码。');
 			if (raw.mode === 'warcon' && !warconToken)
@@ -299,7 +306,8 @@ export class AdminStore {
 				port: raw.port,
 				password,
 				warconUrl,
-				warconToken
+				warconToken,
+				...(warconServerId ? { warconServerId } : {})
 			};
 		});
 		let groups;

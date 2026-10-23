@@ -5,6 +5,7 @@ import type { MessagingSettings } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
 import { Inbox } from './inbox';
 import { groupReply, renderReply, type ReplyOverrides, type ReplyKey } from './reply-copy';
+import { managementInput } from './management-catalog';
 
 const GROUP_EVENTS = new Set([
 	'GROUP_ADD_ROBOT',
@@ -70,7 +71,13 @@ export function officialMessage(
 		!raw.msgElements?.length
 	)
 		text = '/帮助';
-	if (!text || text.length > 300 || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) return null;
+	if (
+		!text ||
+		text.length > 2048 ||
+		(text.length > 300 && !managementInput(text)) ||
+		/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)
+	)
+		return null;
 	if (raw.rawEventType === 'GROUP_MESSAGE_CREATE' && !text.startsWith('/')) return null;
 	if (!text.startsWith('/')) text = '/' + text;
 	return {
@@ -366,6 +373,7 @@ export class OfficialBot {
 			}
 			message.officialReply = {
 				appId,
+				...(managementInput(message.text) ? { management: true } : {}),
 				...(privateChat
 					? { scope: 'c2c' as const, userOpenid: raw.senderId }
 					: { groupOpenid: message.groupId }),
@@ -511,11 +519,12 @@ export class OfficialBot {
 					};
 					let response;
 					try {
-						response = await send(this.state.buttonsAvailable);
+						response = await send(this.state.buttonsAvailable && !target.management);
 					} catch (error) {
 						const code = (error as { bizCode?: number })?.bizCode;
 						// Only a definite keyboard refusal permits a text fallback; never repeat the command.
 						if (
+							target.management ||
 							!this.state.buttonsAvailable ||
 							!code ||
 							!KEYBOARD_REFUSALS.has(code) ||

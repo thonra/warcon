@@ -28,6 +28,8 @@ export interface BotMessage {
 		appId: string;
 		messageId: string;
 		revision: string;
+		/** Hidden management replies do not carry the ordinary self-service keyboard. */
+		management?: boolean;
 	} & ({ scope?: 'group'; groupOpenid: string } | { scope: 'c2c'; userOpenid: string });
 }
 export interface GamePlayer {

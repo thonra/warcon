@@ -118,9 +118,9 @@ export class WarconClient implements WarconPort {
 		this.fetch = options.fetch ?? globalThis.fetch;
 	}
 
-	private async request(
+	async request(
 		path: string,
-		method: 'GET' | 'POST',
+		method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
 		params?: JsonObject,
 		action?: string
 	): Promise<JsonObject> {
@@ -190,7 +190,7 @@ export class WarconClient implements WarconPort {
 		}
 	}
 
-	private async action(serverId: string, action: string, params?: JsonObject): Promise<JsonObject> {
+	async action(serverId: string, action: string, params?: JsonObject): Promise<JsonObject> {
 		const response = await this.request(
 			`${serverPath(serverId)}/rcon/${action}`,
 			params ? 'POST' : 'GET',

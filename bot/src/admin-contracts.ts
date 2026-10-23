@@ -27,6 +27,8 @@ export interface ManagedServer {
 	password: string;
 	warconUrl: string;
 	warconToken: string;
+	/** Companion Warcon server ID for management while self-service stays on direct RCON. */
+	warconServerId?: string;
 }
 export type PublicServer = Omit<ManagedServer, 'password' | 'warconToken'> & {
 	passwordSet: boolean;

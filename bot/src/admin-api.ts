@@ -8,6 +8,8 @@ import type { NapCatStatus } from './napcat-connection';
 import type { OfficialStatus } from './official';
 import { REPLY_CATALOG, ReplyValidationError } from './reply-copy';
 import { DEFAULT_MENU, MenuError, type MenuPort } from './official-menu';
+import { ManagerStore } from './manager-store';
+import { MANAGEMENT_COMMANDS } from './management-catalog';
 
 export interface AdminHooks {
 	/** Fixed operator-configured browser origin for TLS termination; never inferred from proxy headers. */
@@ -15,6 +17,7 @@ export interface AdminHooks {
 	onSettingsChanged: () => void;
 	onRepliesChanged?: () => void;
 	menus?: MenuPort;
+	managers?: ManagerStore;
 	testServer: (
 		server: ManagedServer
 	) => Promise<{ map: string; playerCount: number; factions: string[] }>;
@@ -141,6 +144,47 @@ export class AdminApi {
 			}
 			if (path === '/config' && request.method === 'GET')
 				return json({ ok: true, ...this.store.publicSettings() });
+			if (path === '/managers' && request.method === 'GET') {
+				const managers = this.hooks.managers;
+				if (!managers) throw new ApiFailure(503, '管理权限服务尚未启用');
+				return json({
+					ok: true,
+					...managers.policy(),
+					identities: managers.identities(),
+					operations: managers.recent(),
+					commands: MANAGEMENT_COMMANDS
+				});
+			}
+			if (path === '/managers' && request.method === 'PUT') {
+				if (!this.hooks.managers) throw new ApiFailure(503, '管理权限服务尚未启用');
+				const data = await body(request);
+				const ids = new Set(this.store.getSettings().servers.map((s) => s.id));
+				if (
+					!Array.isArray(data.members) ||
+					data.members.some(
+						(m) =>
+							!m ||
+							!Array.isArray(m.serverIds) ||
+							m.serverIds.some((id: unknown) => !ids.has(id as string))
+					)
+				)
+					throw new ApiFailure(400, '请选择已配置的服务器');
+				const result = this.hooks.managers.save(data.revision, data.members);
+				this.store.audit(session.username, 'managers.updated');
+				return json({ ok: true, ...result });
+			}
+			if (
+				['/manager-bind', '/manager-unbind', '/manager-resolve'].includes(path) &&
+				request.method === 'POST'
+			) {
+				if (!this.hooks.managers) throw new ApiFailure(503, '管理权限服务尚未启用');
+				const data = await body(request);
+				if (path === '/manager-bind') this.hooks.managers.bind(data.revision, data.qq, data.code);
+				else if (path === '/manager-unbind') this.hooks.managers.unbind(data.revision, data.actor);
+				else this.hooks.managers.reconcile(data.id, data.reason);
+				this.store.audit(session.username, path.slice(1));
+				return json({ ok: true });
+			}
 			if (path === '/replies' && request.method === 'GET')
 				return json({ ok: true, ...this.store.getReplies(), catalog: REPLY_CATALOG });
 			if (path === '/replies' && request.method === 'PUT') {

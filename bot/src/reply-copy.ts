@@ -16,6 +16,48 @@ const entry = (
 ): ReplyDefinition => ({ label, category, text, variables, required, allowEmpty });
 
 export const REPLY_CATALOG = {
+	'admin.denied': entry('无管理权限', '管理', '无管理权限'),
+	'admin.failed': entry(
+		'管理查询异常',
+		'管理',
+		'管理请求未完成，请核对 Warcon 管理连接、权限或稍后重试'
+	),
+	'admin.changed': entry('管理配置变化', '管理', '配置已变化或命令已过期，请重新发送'),
+	'admin.identity': entry(
+		'管理身份关联',
+		'管理',
+		'身份码 {code}\n请由后台管理员核对你的QQ身份后，在管理权限中关联\n10分钟内有效，这一步不会授予管理权限',
+		['code'],
+		['code']
+	),
+	'admin.help': entry(
+		'管理员帮助',
+		'管理',
+		'{commands}\n发送 /管理帮助 分类 查看参数示例\n写操作需在2分钟内使用 /执行 确认，不会自动重试',
+		['commands'],
+		['commands']
+	),
+	'admin.quote': entry(
+		'管理操作确认',
+		'管理',
+		'{serverName}\n{summary}\n请核对目标与影响，2分钟内发送 /执行 {code}\n取消请发送 /取消管理 {code}',
+		['serverName', 'summary', 'code'],
+		['summary', 'code']
+	),
+	'admin.success': entry(
+		'管理操作完成',
+		'管理',
+		'{result}\n记录：{orderId}',
+		['result', 'orderId'],
+		['result', 'orderId']
+	),
+	'admin.unknown': entry(
+		'管理结果待核实',
+		'管理',
+		'操作结果暂不确定，请在 Warcon 核实\n不会自动重复执行，请勿直接重复提交\n记录：{orderId}',
+		['orderId'],
+		['orderId']
+	),
 	'help.title': entry('帮助标题', '帮助', '{serverName} · 自助服务', ['serverName']),
 	'help.commands': entry('帮助命令列表', '帮助', '{commands}', ['commands']),
 	'help.economy': entry(
@@ -277,6 +319,8 @@ export function validateReplies(raw: unknown): ReplyOverrides {
 			throw new ReplyValidationError(
 				definition.label + '需保留变量 ' + definition.required.map((v) => '{' + v + '}').join('、')
 			);
+		if (key === 'admin.quote' && !text.includes('/执行 {code}'))
+			throw new ReplyValidationError('管理确认需保留 /执行 {code}');
 		if (key === 'move.quote' && !text.includes('发送 /确认 {code}'))
 			throw new ReplyValidationError('换边报价需保留 发送 /确认 {code}');
 		if (text !== definition.text) out[key as ReplyKey] = text;

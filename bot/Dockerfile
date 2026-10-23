@@ -1,5 +1,7 @@
 FROM docker.io/oven/bun:1.4.4-alpine
 WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production --ignore-scripts
 COPY bot/src ./bot/src
 RUN mkdir -p /app/data && chown -R bun:bun /app
 USER bun

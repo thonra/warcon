@@ -222,3 +222,44 @@ describe('administrator sessions', () => {
 		expect(admin.session(login.token, 1001)).toBeNull();
 	});
 });
+
+test('official credentials are encrypted, masked and scoped to AppID; provider switch preserves both setups', () => {
+	const { admin, path } = setup();
+	const first = admin.saveSettings({
+		...settings(),
+		messaging: {
+			provider: 'official',
+			appId: '1234567890',
+			appSecret: 'synthetic-official-secret',
+			appSecretSet: false
+		}
+	});
+	expect(first.messaging).toMatchObject({
+		provider: 'official',
+		appId: '1234567890',
+		appSecretSet: true
+	});
+	expect(JSON.stringify(first)).not.toContain('synthetic-official-secret');
+	const db = new Database(path);
+	stores.push(db);
+	expect(
+		db.query<{ encrypted: string }, []>('SELECT encrypted FROM bot_admin_settings').get()!.encrypted
+	).not.toContain('synthetic-official-secret');
+	const standby = admin.saveSettings({
+		...first,
+		messaging: { ...first.messaging!, provider: 'napcat', appSecret: '' }
+	});
+	expect(admin.getSettings().messaging?.appSecret).toBe('synthetic-official-secret');
+	expect(admin.getSettings().servers[0].password).toBe('private-rcon-password');
+	const replacement = admin.saveSettings({
+		...standby,
+		messaging: { ...standby.messaging!, provider: 'official', appId: '9999999999', appSecret: '' }
+	});
+	expect(replacement.messaging?.appSecretSet).toBe(false);
+	expect(() =>
+		admin.saveSettings({
+			...replacement,
+			messaging: { ...replacement.messaging!, buttons: 'true' as never }
+		})
+	).toThrow('开关');
+});

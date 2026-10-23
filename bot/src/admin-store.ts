@@ -10,6 +10,7 @@ import { mkdirSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { dirname } from 'node:path';
 import { httpUrl, parseGroups } from './config';
+import { defaultMessaging } from './admin-contracts';
 import type {
 	ManagedServer,
 	ManagedSettings,
@@ -139,6 +140,10 @@ export class AdminStore {
 		const { settings, revision } = this.readSettings();
 		return {
 			revision,
+			messaging: (() => {
+				const { appSecret, ...value } = settings.messaging ?? defaultMessaging();
+				return { ...value, appSecretSet: Boolean(appSecret) };
+			})(),
 			groups: settings.groups,
 			servers: settings.servers.map(({ password, warconToken, ...server }) => ({
 				...server,
@@ -265,7 +270,34 @@ export class AdminStore {
 		}
 		if (groups.some((group) => !ids.has(group.serverId)))
 			throw new AdminValidationError('每个群必须绑定已配置的服务器。');
-		return { servers, groups };
+		const previous = this.getSettings().messaging ?? defaultMessaging();
+		let messaging = previous;
+		if (update.messaging !== undefined) {
+			const raw = update.messaging;
+			if (
+				!raw ||
+				!['napcat', 'official'].includes(raw.provider) ||
+				typeof raw.appId !== 'string' ||
+				(raw.appId && !/^[0-9]{5,20}$/.test(raw.appId))
+			)
+				throw new AdminValidationError('QQ 接入方式或 AppID 格式无效。');
+			if (
+				raw.appSecret !== undefined &&
+				(typeof raw.appSecret !== 'string' ||
+					raw.appSecret.length > 256 ||
+					/\s|[\x00-\x1f\x7f]/.test(raw.appSecret))
+			)
+				throw new AdminValidationError('AppSecret 格式无效，请勿包含空格或换行。');
+			if (raw.buttons !== undefined && typeof raw.buttons !== 'boolean')
+				throw new AdminValidationError('快捷按钮开关无效。');
+			messaging = {
+				provider: raw.provider,
+				appId: raw.appId,
+				appSecret: raw.appSecret || (raw.appId === previous.appId ? previous.appSecret : ''),
+				buttons: raw.buttons ?? previous.buttons ?? true
+			};
+		}
+		return { servers, groups, messaging };
 	}
 	async login(
 		username: string,

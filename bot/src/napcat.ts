@@ -92,13 +92,16 @@ export class NapCatBot {
 		private handler: BotHandler,
 		private fetcher: Fetcher = fetch,
 		private now: () => number = Date.now,
-		private connection?: NapCatConnection
+		private connection?: NapCatConnection,
+		private active: () => boolean = () => true
 	) {}
 	async receive(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		if (request.method === 'GET' && url.pathname === '/health') return Response.json({ ok: true });
 		if (request.method !== 'POST' || url.pathname !== '/onebot/events')
 			return new Response('Not found', { status: 404 });
+		// Backup callbacks are acknowledged but never queued while the official channel is active.
+		if (!this.active()) return Response.json({});
 		let body: Uint8Array;
 		try {
 			body = await smallBody(request);
@@ -109,6 +112,7 @@ export class NapCatBot {
 			return new Response('Unauthorized', { status: 401 });
 		// Signed callbacks can prompt discovery, but cannot choose the active account themselves.
 		await this.connection?.refresh(request.headers.get('x-self-id') !== this.config.selfId);
+		if (!this.active()) return Response.json({});
 		if (this.connection && !this.connection.status().online)
 			return new Response('QQ offline', { status: 503 });
 		if (request.headers.get('x-self-id') !== this.config.selfId)
@@ -145,12 +149,16 @@ export class NapCatBot {
 		return this.working;
 	}
 	private async drain(): Promise<void> {
+		if (!this.active()) return;
 		await this.connection?.refresh();
+		if (!this.active()) return;
 		if (this.connection && !this.connection.status().online) return;
 		// Limit each pass so shutdown/maintenance gets a chance under sustained input.
 		for (let i = 0; i < 20; i++) {
+			if (!this.active()) return;
 			if (!this.inbox.hasWork('pending')) break;
 			await this.connection?.refresh(true);
+			if (!this.active()) return;
 			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claim();
 			if (!row) break;
@@ -158,7 +166,7 @@ export class NapCatBot {
 			try {
 				const message: BotMessage = JSON.parse(row.payload);
 				const group = this.config.groups.find((g) => g.groupId === message.groupId);
-				if (!group) reply = '该群已停用机器人。';
+				if (!group || message.officialReply) reply = '该群已停用此接入方式。';
 				else if (message.configurationRevision !== this.config.revision)
 					reply = '机器人配置已更新，请重新发送命令。';
 				else if (this.now() - message.time > 120000) reply = '这条命令已超过两分钟，请重新发送。';
@@ -173,14 +181,17 @@ export class NapCatBot {
 	}
 	private async sendReplies(): Promise<void> {
 		for (let i = 0; i < 20; i++) {
+			if (!this.active()) return;
 			if (!this.inbox.hasWork('done')) return;
 			// Refresh after awaiting a command: an account may have changed while the game API was busy.
 			await this.connection?.refresh(true);
+			if (!this.active()) return;
 			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claimReply();
 			if (!row) break;
 			let success = false;
 			try {
+				if (row.reply_target) throw new Error('Official reply cannot use NapCat');
 				const response = await this.fetcher(`${this.config.napcatUrl}/send_group_msg`, {
 					method: 'POST',
 					redirect: 'error',

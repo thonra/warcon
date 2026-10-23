@@ -8,11 +8,13 @@ import { WarconClient } from './warcon';
 import { Inbox } from './inbox';
 import { NapCatBot } from './napcat';
 import { NapCatConnection } from './napcat-connection';
+import { OfficialBot } from './official';
 import { AdminStore } from './admin-store';
 import { AdminApi } from './admin-api';
 import { adminPage } from './admin-page';
 import { ManagedWarcon, serverClient } from './managed-warcon';
 import type { ManagedSettings } from './admin-contracts';
+import { defaultMessaging } from './admin-contracts';
 import type { WarconPort } from './contracts';
 import { randomUUID } from 'node:crypto';
 
@@ -43,6 +45,7 @@ async function main(): Promise<void> {
 	let store: BotStore | undefined;
 	let inbox: Inbox | undefined;
 	let adminStore: AdminStore | undefined;
+	let official: OfficialBot | undefined;
 	try {
 		store = new BotStore(path);
 		store.recoverInterrupted();
@@ -65,18 +68,28 @@ async function main(): Promise<void> {
 		let warcon: WarconPort;
 		let admin: AdminApi | undefined;
 		let revision = 0;
+		let messaging = defaultMessaging();
+		const napcatConfigured = config!.webhookSecret.length >= 24 && config!.napcatToken.length >= 24;
+		const napcatActive = () => messaging.provider === 'napcat' && napcatConfigured;
 		const connection = config!.autoSelfId
-			? new NapCatConnection(config!, () => {
-					revision++;
-					store!.invalidateConfirmations();
-					inbox!.discardSession();
-				})
+			? new NapCatConnection(
+					config!,
+					() => {
+						revision++;
+						store!.invalidateConfirmations();
+						inbox!.discardSession();
+					},
+					fetch,
+					Date.now,
+					napcatActive
+				)
 			: undefined;
 		if (config!.managed) {
 			const auth = config!.managed;
 			adminStore = new AdminStore(path, auth.masterKey);
 			await adminStore.initialize(auth.username, auth.password);
 			let current: ManagedSettings = adminStore.getSettings();
+			messaging = current.messaging ?? defaultMessaging();
 			config!.groups = current.groups;
 			warcon = new ManagedWarcon(
 				() => current.servers,
@@ -86,10 +99,13 @@ async function main(): Promise<void> {
 				publicOrigin: auth.origin,
 				onSettingsChanged: () => {
 					current = adminStore!.getSettings();
+					messaging = current.messaging ?? defaultMessaging();
 					config!.groups = current.groups;
 					config!.revision = randomUUID();
 					revision++;
 					store!.invalidateConfirmations();
+					inbox!.discardSession();
+					official?.configure(messaging);
 				},
 				testServer: async (server) => {
 					const view = await serverClient(server).snapshot(server.id);
@@ -101,18 +117,30 @@ async function main(): Promise<void> {
 				},
 				backupPath: resolve(dirname(path), 'backups'),
 				selfId: () => config!.selfId,
-				connection: connection ? () => connection.status() : undefined,
+				connection: () =>
+					messaging.provider === 'official'
+						? official!.status()
+						: (connection?.status() ?? {
+								selfId: config!.selfId,
+								nickname: '',
+								online: false,
+								checkedAt: null,
+								lastEventAt: null,
+								error: '固定 NapCat 账号；请用群命令验证连接。'
+							}),
+				reconnect: () => {
+					if (messaging.provider === 'official') official?.reconnect();
+					else void connection?.refresh(true);
+				},
 				inboxStats: () => inbox!.stats()
 			});
 		} else warcon = new WarconClient({ baseUrl: config!.warconUrl, token: config!.warconToken });
-		const bot = new NapCatBot(
-			config!,
-			inbox,
-			new CommandHandler(store, warcon, { configurationRevision: () => config!.revision }),
-			fetch,
-			Date.now,
-			connection
-		);
+		const handler = new CommandHandler(store, warcon, {
+			configurationRevision: () => config!.revision
+		});
+		official = new OfficialBot(config!, inbox, handler);
+		official.configure(messaging);
+		const bot = new NapCatBot(config!, inbox, handler, fetch, Date.now, connection, napcatActive);
 		const server = Bun.serve({
 			hostname: config!.host,
 			port: config!.port,
@@ -138,7 +166,9 @@ async function main(): Promise<void> {
 			}
 		});
 		const timer = setInterval(() => {
-			void bot.pump().catch(() => console.error('消息处理异常，请检查本地记录。'));
+			void (napcatActive() ? bot.pump() : official!.pump()).catch(() =>
+				console.error('消息处理异常，请检查本地记录。')
+			);
 		}, 250);
 		const cleanup = setInterval(() => inbox!.prune(Date.now()), 3600000);
 		// Independent of the worker so an in-flight game request cannot hide a QQ logout.
@@ -161,9 +191,12 @@ async function main(): Promise<void> {
 		clearInterval(cleanup);
 		clearInterval(identityTimer);
 		await server.stop(true);
+		official.stop();
+		await official.pump();
 		await bot.pump();
 		await connection?.refresh();
 	} finally {
+		official?.stop();
 		adminStore?.close();
 		inbox?.close();
 		store?.close();

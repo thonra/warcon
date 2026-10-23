@@ -5,6 +5,7 @@ import { AdminStore, AdminValidationError, AdminConflictError } from './admin-st
 import { BotStore } from './store';
 import type { ManagedServer, SettingsUpdate } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
+import type { OfficialStatus } from './official';
 
 export interface AdminHooks {
 	/** Fixed operator-configured browser origin for TLS termination; never inferred from proxy headers. */
@@ -16,7 +17,8 @@ export interface AdminHooks {
 	/** Private temporary directory. Every completed download removes its snapshot. */
 	backupPath: string;
 	selfId: () => string;
-	connection?: () => NapCatStatus;
+	connection?: () => NapCatStatus | OfficialStatus;
+	reconnect?: () => void;
 	inboxStats: () => Record<string, number>;
 }
 const COOKIE = 'warcon_bot_admin';
@@ -135,6 +137,11 @@ export class AdminApi {
 			}
 			if (path === '/config' && request.method === 'GET')
 				return json({ ok: true, ...this.store.publicSettings() });
+			if (path === '/reconnect' && request.method === 'POST' && this.hooks.reconnect) {
+				this.hooks.reconnect();
+				this.store.audit(session.username, 'messaging.reconnect');
+				return json({ ok: true });
+			}
 			if (path === '/config' && request.method === 'PUT') {
 				const data = await body(request);
 				const settings = this.store.saveSettings(

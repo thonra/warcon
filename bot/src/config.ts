@@ -22,15 +22,31 @@ export function qqId(value: unknown): string | null {
 		? id
 		: null;
 }
+export const officialId = (value: unknown): value is string =>
+	typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
+export const officialUserId = (value: string): boolean =>
+	/^qqofficial:[0-9]{5,20}:[a-zA-Z0-9_-]{1,128}:[a-zA-Z0-9_-]{1,128}$/.test(value);
 export function parseGroups(input: unknown): GroupConfig[] {
 	if (!Array.isArray(input) || !input.length) throw new Error('群配置必须是非空数组。');
 	const ids = new Set<string>();
+	const officialIds = new Set<string>();
 	const communities = new Map<string, string>();
 	return input.map((raw) => {
 		if (!raw || typeof raw !== 'object') throw new Error('群配置格式错误。');
 		const groupId = qqId(raw.groupId);
 		if (!groupId || ids.has(groupId)) throw new Error('群号必须有效且不能重复。');
 		ids.add(groupId);
+		if (raw.officialGroupId || raw.officialAppId) {
+			if (
+				!officialId(raw.officialGroupId) ||
+				typeof raw.officialAppId !== 'string' ||
+				!/^[0-9]{5,20}$/.test(raw.officialAppId)
+			)
+				throw new Error('官方群 OpenID 和所属 AppID 必须同时填写且格式有效。');
+			const key = `${raw.officialAppId}:${raw.officialGroupId}`;
+			if (officialIds.has(key)) throw new Error('同一官方群不能重复关联。');
+			officialIds.add(key);
+		}
 		for (const key of ['communityId', 'serverId', 'serverName'] as const)
 			if (typeof raw[key] !== 'string' || !raw[key].trim() || raw[key].length > 100)
 				throw new Error(`群配置缺少 ${key}。`);
@@ -52,6 +68,9 @@ export function parseGroups(input: unknown): GroupConfig[] {
 			throw new Error('factions 必须明确配置蓝、红、绿三个不同的游戏阵营名称。');
 		const group: GroupConfig = {
 			groupId,
+			...(raw.officialGroupId
+				? { officialGroupId: raw.officialGroupId, officialAppId: raw.officialAppId }
+				: {}),
 			communityId: raw.communityId,
 			serverId: raw.serverId,
 			serverName: raw.serverName,
@@ -115,12 +134,14 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 	};
 	if (env.QQ_BOT_AUTO_SELF_ID !== undefined && !['true', 'false'].includes(env.QQ_BOT_AUTO_SELF_ID))
 		throw new Error('QQ_BOT_AUTO_SELF_ID 必须是 true 或 false。');
-	const autoSelfId = env.QQ_BOT_AUTO_SELF_ID === 'true';
+	const managed = env.QQ_BOT_MANAGED === 'true';
+	const autoSelfId =
+		env.QQ_BOT_AUTO_SELF_ID === 'true' ||
+		(managed && env.QQ_BOT_AUTO_SELF_ID === undefined && !valueOf('QQ_BOT_SELF_ID'));
 	const selfId = autoSelfId ? '' : qqId(required('QQ_BOT_SELF_ID'));
 	if (!autoSelfId && !selfId) throw new Error('QQ_BOT_SELF_ID 无效。');
 	const port = Number(env.QQ_BOT_PORT ?? 3100);
 	if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('QQ_BOT_PORT 无效。');
-	const managed = env.QQ_BOT_MANAGED === 'true';
 	const admin = managed
 		? {
 				username: env.QQ_ADMIN_USER ?? 'admin',
@@ -137,9 +158,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 		databasePath: env.QQ_BOT_DB ?? './data/qq-bot.sqlite',
 		selfId: selfId!,
 		autoSelfId,
-		webhookSecret: required('NAPCAT_WEBHOOK_SECRET', 24),
-		napcatUrl: httpUrl(required('NAPCAT_API_URL')),
-		napcatToken: required('NAPCAT_API_TOKEN', 24),
+		webhookSecret: managed
+			? (valueOf('NAPCAT_WEBHOOK_SECRET') ?? '')
+			: required('NAPCAT_WEBHOOK_SECRET', 24),
+		napcatUrl: httpUrl(
+			managed ? valueOf('NAPCAT_API_URL') || 'http://127.0.0.1:3000' : required('NAPCAT_API_URL')
+		),
+		napcatToken: managed ? (valueOf('NAPCAT_API_TOKEN') ?? '') : required('NAPCAT_API_TOKEN', 24),
 		warconUrl: managed ? '' : httpUrl(required('WARCON_URL')),
 		warconToken: managed ? '' : required('WARCON_API_TOKEN'),
 		groups: managed

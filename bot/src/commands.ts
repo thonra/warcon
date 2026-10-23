@@ -112,6 +112,15 @@ export class CommandHandler implements BotHandler {
 				run: (message, group, argument) => this.quoteMove(message, group, argument)
 			},
 			{
+				aliases: ['取消'],
+				usage: '取消',
+				description: '取消待验证绑定和未确认的换边',
+				run: (message, group) =>
+					this.store.cancelPending(group.communityId, message.userId, group.serverId)
+						? '已取消待验证绑定和未确认的换边，不会扣除积分。已执行或待核实的操作不受影响。'
+						: '没有待取消的请求。已执行或待核实的换边请用 /积分 查询，或联系管理员。'
+			},
+			{
 				aliases: ['确认'],
 				usage: '确认 6位确认码',
 				description: '确认自己的待处理换边',
@@ -122,6 +131,7 @@ export class CommandHandler implements BotHandler {
 	async handle(message: BotMessage, group: GroupConfig): Promise<string> {
 		if (message.groupId !== group.groupId || !message.userId || !message.id)
 			return '当前群组未授权使用这个服务器。';
+		message = { ...message, userId: this.store.accountUserId(group.communityId, message.userId) };
 		try {
 			this.assertCurrentConfiguration(message);
 			const text = message.text.trim().replace(/^／/, '/');
@@ -192,7 +202,7 @@ export class CommandHandler implements BotHandler {
 			await this.warcon.whisper(
 				group.serverId,
 				steamId,
-				`QQ账号 ${message.userId} 正在申请绑定此 Steam 账号。只有你本人发起时，才在 QQ 群发送 /验证 ${code}。5分钟内有效，请勿转告他人。`
+				`${message.officialReply ? '官方机器人用户' : 'QQ账号'} ${message.userId} 正在申请绑定此 Steam 账号并关联已有积分。只有你本人发起时，才在 QQ 群发送 /验证 ${code}。5分钟内有效，请勿转告他人。`
 			);
 		} catch {
 			this.assertCurrentConfiguration(message);

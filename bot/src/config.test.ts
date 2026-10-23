@@ -71,11 +71,36 @@ test('fixed admin origin is optional, normalized, and rejects paths or credentia
 		loadConfig({ ...env, QQ_BOT_AUTO_SELF_ID: 'true', QQ_BOT_SELF_ID: undefined })
 	).toMatchObject({ autoSelfId: true, selfId: '' });
 	expect(() => loadConfig({ ...env, QQ_BOT_AUTO_SELF_ID: 'typo' })).toThrow('QQ_BOT_AUTO_SELF_ID');
-	expect(() => loadConfig({ ...env, QQ_BOT_SELF_ID: undefined })).toThrow('QQ_BOT_SELF_ID');
+	expect(
+		loadConfig({
+			...env,
+			QQ_BOT_SELF_ID: undefined,
+			NAPCAT_API_TOKEN: undefined,
+			NAPCAT_WEBHOOK_SECRET: undefined,
+			NAPCAT_API_URL: undefined
+		})
+	).toMatchObject({ autoSelfId: true, napcatToken: '', webhookSecret: '' });
+	expect(() =>
+		loadConfig({ ...env, QQ_BOT_AUTO_SELF_ID: 'false', QQ_BOT_SELF_ID: undefined })
+	).toThrow('QQ_BOT_SELF_ID');
 	expect(loadConfig({ ...env, QQ_ADMIN_ORIGIN: ' https://bot.test/ ' }).managed?.origin).toBe(
 		'https://bot.test'
 	);
 	expect(() => loadConfig({ ...env, QQ_ADMIN_ORIGIN: 'https://bot.test/admin' })).toThrow(
 		'QQ_ADMIN_ORIGIN'
 	);
+});
+
+test('official group IDs require an app-scoped unique mapping, independent of raw QQ numbers', () => {
+	const official = { ...group, officialAppId: '1234567890', officialGroupId: 'ABCDEF012345' };
+	expect(parseGroups([official])[0]).toMatchObject({
+		officialAppId: '1234567890',
+		officialGroupId: 'ABCDEF012345'
+	});
+	expect(() => parseGroups([{ ...group, officialGroupId: 'ABCDEF012345' }])).toThrow('AppID');
+	expect(() => parseGroups([{ ...official, officialAppId: 1234567890 }])).toThrow('AppID');
+	expect(() => parseGroups([official, { ...official, groupId: '234567' }])).toThrow('重复');
+	expect(
+		parseGroups([official, { ...official, groupId: '234567', officialAppId: '9999999999' }])
+	).toHaveLength(2);
 });

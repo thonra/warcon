@@ -9,6 +9,7 @@ export interface InboxRow {
 	reply: string | null;
 	status: string;
 	accepted_at: number;
+	reply_target: string | null;
 }
 /** Durable receive/execute/reply boundaries; ambiguous execution is never replayed. */
 export class Inbox {
@@ -21,6 +22,13 @@ export class Inbox {
 			payload TEXT NOT NULL, reply TEXT, status TEXT NOT NULL, accepted_at INTEGER NOT NULL);
 			CREATE INDEX IF NOT EXISTS qq_inbox_status ON qq_inbox(status, accepted_at);
 			CREATE INDEX IF NOT EXISTS qq_inbox_rate ON qq_inbox(group_id, user_id, accepted_at);`);
+		if (
+			!this.db
+				.query<{ name: string }, []>('PRAGMA table_info(qq_inbox)')
+				.all()
+				.some((c) => c.name === 'reply_target')
+		)
+			this.db.exec('ALTER TABLE qq_inbox ADD COLUMN reply_target TEXT');
 	}
 	accept(key: string, message: BotMessage, now: number): 'accepted' | 'duplicate' | 'limited' {
 		return this.db
@@ -34,8 +42,18 @@ export class Inbox {
 					.get(message.userId, message.groupId, now - 60000)!;
 				if (counts.own >= 12 || counts.total >= 120) return 'limited' as const;
 				this.db
-					.query('INSERT INTO qq_inbox VALUES (?,?,?,?,NULL,?,?)')
-					.run(key, message.groupId, message.userId, JSON.stringify(message), 'pending', now);
+					.query(
+						'INSERT INTO qq_inbox (key,group_id,user_id,payload,reply,status,accepted_at,reply_target) VALUES (?,?,?,?,NULL,?,?,?)'
+					)
+					.run(
+						key,
+						message.groupId,
+						message.userId,
+						JSON.stringify(message),
+						'pending',
+						now,
+						message.officialReply ? JSON.stringify(message.officialReply) : null
+					);
 				return 'accepted' as const;
 			})
 			.immediate();

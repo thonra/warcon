@@ -1,4 +1,5 @@
 import { Database } from 'bun:sqlite';
+import { officialUserId } from './config';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -54,6 +55,10 @@ export class BotStore {
 			.user_version;
 		if (version > 1) throw new Error(`Unsupported bot database version: ${version}`);
 		this.db.exec(`
+			CREATE TABLE IF NOT EXISTS identity_links (
+				communityId TEXT NOT NULL, identityId TEXT NOT NULL, userId TEXT NOT NULL, verifiedAt INTEGER NOT NULL,
+				PRIMARY KEY (communityId, identityId)
+			);
 			CREATE TABLE IF NOT EXISTS bindings (
 				communityId TEXT NOT NULL, userId TEXT NOT NULL, steamId TEXT NOT NULL, createdAt INTEGER NOT NULL,
 				PRIMARY KEY (communityId, userId), UNIQUE (communityId, steamId)
@@ -103,6 +108,16 @@ export class BotStore {
 		mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
 		this.db.query('VACUUM INTO ?').run(path);
 	}
+	/** Link channel-specific identities only after proving ownership via the game whisper. */
+	accountUserId(communityId: string, identityId: string): string {
+		return (
+			this.db
+				.query<{ userId: string }, [string, string]>(
+					'SELECT userId FROM identity_links WHERE communityId=? AND identityId=?'
+				)
+				.get(communityId, identityId)?.userId ?? identityId
+		);
+	}
 	binding(communityId: string, userId: string): Binding | null {
 		return this.db
 			.query<Binding, [string, string]>(
@@ -113,9 +128,10 @@ export class BotStore {
 	beginBinding(communityId: string, userId: string, steamId: string, code: string, now: number) {
 		this.db
 			.transaction(() => {
-				if (this.binding(communityId, userId))
+				if (this.binding(communityId, this.accountUserId(communityId, userId)))
 					throw new BotUserError('你已经绑定了 Steam 账号。更换绑定请联系管理员。');
 				if (
+					!officialUserId(userId) &&
 					this.db
 						.query('SELECT 1 FROM bindings WHERE communityId = ? AND steamId = ?')
 						.get(communityId, steamId)
@@ -142,7 +158,8 @@ export class BotStore {
 		// Return errors from the transaction so failed attempts are committed, rather than rolled back.
 		const result = this.db
 			.transaction((): Binding | string => {
-				if (this.binding(communityId, userId)) return '你已经完成绑定，无需重复验证。';
+				if (this.binding(communityId, this.accountUserId(communityId, userId)))
+					return '你已经完成绑定，无需重复验证。';
 				const challenge = this.db
 					.query<ChallengeRow, [string, string]>(
 						'SELECT steamId, salt, hash, expiresAt, attempts FROM binding_challenges WHERE communityId = ? AND userId = ?'
@@ -159,12 +176,23 @@ export class BotStore {
 						.run(communityId, userId);
 					return `验证码不正确，还可尝试 ${4 - challenge.attempts} 次。请查看游戏内私信，不要使用其他人的验证码。`;
 				}
-				if (
+				const existing = this.db
+					.query<Binding, [string, string]>(
+						'SELECT communityId,userId,steamId FROM bindings WHERE communityId=? AND steamId=?'
+					)
+					.get(communityId, challenge.steamId);
+				if (existing) {
+					if (!officialUserId(userId)) return '这个 Steam 账号已被其他人绑定，请联系管理员核实。';
 					this.db
-						.query('SELECT 1 FROM bindings WHERE communityId = ? AND steamId = ?')
-						.get(communityId, challenge.steamId)
-				)
-					return '这个 Steam 账号已被其他人绑定，请联系管理员核实。';
+						.query(
+							'INSERT INTO identity_links (communityId,identityId,userId,verifiedAt) VALUES (?,?,?,?)'
+						)
+						.run(communityId, userId, existing.userId, now);
+					this.db
+						.query('DELETE FROM binding_challenges WHERE communityId=? AND userId=?')
+						.run(communityId, userId);
+					return existing;
+				}
 				this.db
 					.query(
 						'INSERT INTO bindings (communityId, userId, steamId, createdAt) VALUES (?, ?, ?, ?)'
@@ -380,6 +408,21 @@ export class BotStore {
 	}
 	invalidateConfirmations() {
 		return this.db.query('DELETE FROM confirmations WHERE operationId IS NULL').run().changes;
+	}
+	cancelPending(communityId: string, userId: string, serverId: string): number {
+		return this.db
+			.transaction(() => {
+				const bindings = this.db
+					.query('DELETE FROM binding_challenges WHERE communityId=? AND userId=?')
+					.run(communityId, userId).changes;
+				const moves = this.db
+					.query(
+						'DELETE FROM confirmations WHERE communityId=? AND userId=? AND serverId=? AND operationId IS NULL'
+					)
+					.run(communityId, userId, serverId).changes;
+				return bindings + moves;
+			})
+			.immediate();
 	}
 	listAccounts(limit = 200): (Binding & { balance: number })[] {
 		return this.db

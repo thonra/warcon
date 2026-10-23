@@ -2,6 +2,9 @@
 export type TeamColor = '蓝' | '红' | '绿';
 export interface GroupConfig {
 	groupId: string;
+	/** Explicit official-channel mapping. A raw QQ group number is never an OpenID. */
+	officialGroupId?: string;
+	officialAppId?: string;
 	communityId: string;
 	serverId: string;
 	serverName: string;
@@ -20,6 +23,8 @@ export interface BotMessage {
 	time: number;
 	/** Stamped by the authenticated transport, never taken from incoming QQ text. */
 	configurationRevision?: string;
+	/** Only reply routing metadata survives command completion, never command text or verification codes. */
+	officialReply?: { appId: string; groupOpenid: string; messageId: string; revision: string };
 }
 export interface GamePlayer {
 	steamId: string;

@@ -27,7 +27,8 @@ export class NapCatConnection {
 		private config: BotConfig,
 		private onSessionChanged: () => void,
 		private fetcher: Fetcher = fetch,
-		private now: () => number = Date.now
+		private now: () => number = Date.now,
+		private active: () => boolean = () => true
 	) {
 		// Even a configured previous QQ is not trusted until this process verifies the live session.
 		config.selfId = '';
@@ -41,6 +42,7 @@ export class NapCatConnection {
 	}
 
 	refresh(force = false): Promise<void> {
+		if (!this.active()) return Promise.resolve();
 		if (this.pending) return this.pending;
 		if (!force && this.now() < this.nextCheck) return Promise.resolve();
 		this.pending = this.check().finally(() => {
@@ -122,6 +124,7 @@ export class NapCatConnection {
 				error: '无法连接 NapCat，请检查服务与 HTTP API 配置。'
 			};
 		}
+		if (!this.active()) return;
 		next.checkedAt = this.now();
 		const changed = next.online !== this.state.online || next.selfId !== this.state.selfId;
 		this.state = next;

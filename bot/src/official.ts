@@ -1,6 +1,6 @@
 import { QQBot, type QQBotInboundMessage, type QQBotOptions } from '@tencent-connect/qqbot-nodejs';
 import { officialId, type BotConfig } from './config';
-import type { BotHandler, BotMessage } from './contracts';
+import type { BotHandler, BotMessage, GroupConfig } from './contracts';
 import type { MessagingSettings } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
 import { Inbox } from './inbox';
@@ -10,6 +10,7 @@ export interface OfficialStatus extends NapCatStatus {
 	appId: string;
 	phase: 'unconfigured' | 'connecting' | 'online' | 'offline' | 'standby';
 	groups: { openid: string; lastSeenAt: number }[];
+	privateUsers: { openid: string; lastSeenAt: number }[];
 	lastReplyError: string | null;
 	buttonsAvailable: boolean;
 }
@@ -22,14 +23,20 @@ export function officialMessage(
 	appId: string,
 	now: number
 ): BotMessage | null {
+	const privateChat = raw.kind === 'c2c' && raw.rawEventType === 'C2C_MESSAGE_CREATE';
 	if (
-		raw.kind !== 'group' ||
-		!['GROUP_AT_MESSAGE_CREATE', 'GROUP_MESSAGE_CREATE'].includes(raw.rawEventType) ||
+		(!privateChat &&
+			(raw.kind !== 'group' ||
+				!['GROUP_AT_MESSAGE_CREATE', 'GROUP_MESSAGE_CREATE'].includes(raw.rawEventType))) ||
 		raw.senderIsBot ||
-		!officialId(raw.groupOpenid) ||
+		(raw.raw as { author?: { bot?: boolean } })?.author?.bot ||
+		(!privateChat && !officialId(raw.groupOpenid)) ||
+		(raw.msgType !== undefined && ![0, 103].includes(raw.msgType)) ||
 		!officialId(raw.senderId) ||
 		typeof raw.messageId !== 'string' ||
 		!/^\S{1,512}$/.test(raw.messageId) ||
+		(raw.msgIdx !== undefined &&
+			(typeof raw.msgIdx !== 'string' || !/^\S{1,512}$/.test(raw.msgIdx))) ||
 		typeof raw.content !== 'string' ||
 		raw.attachments?.length
 	)
@@ -45,8 +52,10 @@ export function officialMessage(
 	if (!text.startsWith('/')) text = '/' + text;
 	return {
 		id: raw.messageId,
-		groupId: raw.groupOpenid,
-		userId: `qqofficial:${appId}:${raw.groupOpenid}:${raw.senderId}`,
+		groupId: privateChat ? raw.senderId : raw.groupOpenid!,
+		userId: privateChat
+			? `qqofficial:c2c:${appId}:${raw.senderId}`
+			: `qqofficial:${appId}:${raw.groupOpenid}:${raw.senderId}`,
 		text,
 		time
 	};
@@ -121,7 +130,8 @@ export class OfficialBot {
 	private retryAt = 0;
 	private stopped = false;
 	private seen = new Map<string, number>();
-	private state: Omit<OfficialStatus, 'groups'> = {
+	private seenPrivate = new Map<string, number>();
+	private state: Omit<OfficialStatus, 'groups' | 'privateUsers'> = {
 		provider: 'official',
 		appId: '',
 		selfId: '',
@@ -145,7 +155,8 @@ export class OfficialBot {
 	status(): OfficialStatus {
 		return {
 			...this.state,
-			groups: [...this.seen].map(([openid, lastSeenAt]) => ({ openid, lastSeenAt }))
+			groups: [...this.seen].map(([openid, lastSeenAt]) => ({ openid, lastSeenAt })),
+			privateUsers: [...this.seenPrivate].map(([openid, lastSeenAt]) => ({ openid, lastSeenAt }))
 		};
 	}
 	configure(settings: MessagingSettings): void {
@@ -154,7 +165,10 @@ export class OfficialBot {
 		this.settings = { ...settings };
 		this.retire();
 		this.stopped = false;
-		if (changedApp) this.seen.clear();
+		if (changedApp) {
+			this.seen.clear();
+			this.seenPrivate.clear();
+		}
 		this.state = {
 			...this.state,
 			appId: settings.appId,
@@ -252,23 +266,36 @@ export class OfficialBot {
 			const message = officialMessage(raw, appId, this.now());
 			if (!message) return;
 			this.state.lastEventAt = this.now();
-			this.seen.delete(message.groupId);
-			this.seen.set(message.groupId, this.now());
-			if (this.seen.size > 100) this.seen.delete(this.seen.keys().next().value!);
-			const group = this.config.groups.find(
-				(g) => g.officialAppId === appId && g.officialGroupId === message.groupId
+			const privateChat = raw.kind === 'c2c';
+			const seen = privateChat ? this.seenPrivate : this.seen;
+			seen.delete(message.groupId);
+			seen.set(message.groupId, this.now());
+			if (seen.size > 100) seen.delete(seen.keys().next().value!);
+			const tester = privateChat
+				? this.settings.privateTests?.find(
+						(t) => t.appId === appId && t.userOpenid === raw.senderId
+					)
+				: undefined;
+			const group = this.config.groups.find((g) =>
+				privateChat
+					? g.groupId === tester?.groupId
+					: g.officialAppId === appId && g.officialGroupId === message.groupId
 			);
-			if (!group) return; // Discovery never grants a group access to game commands.
+			if (!group) return; // Discovery never grants command access, in either conversation type.
 			message.officialReply = {
 				appId,
-				groupOpenid: message.groupId,
+				...(privateChat
+					? { scope: 'c2c' as const, userOpenid: raw.senderId }
+					: { groupOpenid: message.groupId }),
 				messageId: message.id,
 				revision: this.config.revision!
 			};
 			message.groupId = group.groupId;
 			message.configurationRevision = this.config.revision;
 			this.inbox.accept(
-				`official:${appId}:${message.officialReply.groupOpenid}:${message.id}`,
+				privateChat
+					? `official:c2c:${appId}:${raw.senderId}:${raw.msgIdx ? 'idx:' + raw.msgIdx : 'id:' + message.id}`
+					: `official:${appId}:${raw.groupOpenid}:${message.id}`,
 				message,
 				this.now()
 			);
@@ -308,6 +335,17 @@ export class OfficialBot {
 			!this.stopped
 		);
 	}
+	private authorized(target: BotMessage['officialReply'], group: GroupConfig | undefined): boolean {
+		if (!target || !group || target.appId !== this.settings.appId) return false;
+		return target.scope === 'c2c'
+			? !!this.settings.privateTests?.some(
+					(t) =>
+						t.appId === target.appId &&
+						t.userOpenid === target.userOpenid &&
+						t.groupId === group.groupId
+				)
+			: group.officialAppId === target.appId && group.officialGroupId === target.groupOpenid;
+	}
 	private async drain(): Promise<void> {
 		const generation = this.generation;
 		for (let i = 0; i < 20 && this.active(generation); i++) {
@@ -317,12 +355,11 @@ export class OfficialBot {
 			try {
 				const message: BotMessage = JSON.parse(row.payload);
 				const group = this.config.groups.find((g) => g.groupId === message.groupId);
-				if (!message.officialReply || message.officialReply.appId !== this.settings.appId || !group)
-					reply = '该群接入已停用。';
+				if (!this.authorized(message.officialReply, group)) reply = '该会话接入已停用。';
 				else if (message.configurationRevision !== this.config.revision)
 					reply = '配置已更新，请重新发送命令。';
 				else if (this.now() - message.time > 120_000) reply = '命令已超过两分钟，请重新发送。';
-				else reply = await this.handler.handle(message, group);
+				else reply = await this.handler.handle(message, group!);
 			} catch {
 				/* Never expose message text, codes or upstream credentials. */
 			}
@@ -345,8 +382,7 @@ export class OfficialBot {
 					target &&
 					target.appId === this.settings.appId &&
 					target.revision === this.config.revision &&
-					group?.officialGroupId === target.groupOpenid &&
-					group.officialAppId === target.appId &&
+					this.authorized(target, group) &&
 					this.now() - row.accepted_at <= 120_000
 				) {
 					const client = this.client!;
@@ -357,9 +393,12 @@ export class OfficialBot {
 					// Config/provider can change while token retrieval is in flight.
 					if (!this.active(generation) || target.revision !== this.config.revision)
 						throw new Error();
-					const content = /\/(绑定|验证|确认)/.test(row.reply ?? '')
-						? row.reply + '\n后续命令也请 @机器人。'
-						: row.reply;
+					const content =
+						target.scope === 'c2c'
+							? `${group!.serverName} · 私聊测试\n${row.reply}`
+							: /\/(绑定|验证|确认)/.test(row.reply ?? '')
+								? row.reply + '\n后续命令也请 @机器人。'
+								: row.reply;
 					const send = async (keyboard: boolean) => {
 						const response = await client.apiClient.request<{
 							id?: unknown;
@@ -368,7 +407,9 @@ export class OfficialBot {
 						}>(
 							token,
 							'POST',
-							`/v2/groups/${encodeURIComponent(target.groupOpenid)}/messages`,
+							target.scope === 'c2c'
+								? `/v2/users/${encodeURIComponent(target.userOpenid)}/messages`
+								: `/v2/groups/${encodeURIComponent(target.groupOpenid)}/messages`,
 							{
 								msg_type: 0,
 								content,

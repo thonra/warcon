@@ -263,3 +263,52 @@ test('official credentials are encrypted, masked and scoped to AppID; provider s
 		})
 	).toThrow('开关');
 });
+
+test('C2C authorization is bounded, app-scoped, unique and tied to an existing policy', () => {
+	const { admin } = setup();
+	const base = settings();
+	base.groups = [
+		{
+			groupId: '1127697668',
+			communityId: 'ash',
+			serverId: 'alpha',
+			serverName: '余烬',
+			timezone: 'Asia/Shanghai',
+			checkinPoints: 10,
+			moveCost: 3,
+			moveCooldownSeconds: 300,
+			factions: { 蓝: 'Blue', 红: 'Red', 绿: 'Green' }
+		}
+	];
+	const tester = { appId: '1234567890', userOpenid: 'TEST_USER', groupId: '1127697668' };
+	const saved = admin.saveSettings({
+		...base,
+		messaging: {
+			provider: 'official',
+			appId: tester.appId,
+			appSecretSet: false,
+			privateTests: [tester]
+		}
+	});
+	expect(admin.getSettings().messaging?.privateTests).toEqual([tester]);
+	for (const bad of [
+		[tester, tester],
+		[{ ...tester, appId: '9999999999' }],
+		[{ ...tester, userOpenid: '../x' }],
+		[{ ...tester, groupId: '54321' }],
+		Array.from({ length: 21 }, (_, i) => ({ ...tester, userOpenid: 'user' + i }))
+	])
+		expect(() =>
+			admin.saveSettings({ ...saved, messaging: { ...saved.messaging!, privateTests: bad } })
+		).toThrow('私聊');
+	expect(() => admin.saveSettings({ ...saved, groups: [] })).toThrow('私聊');
+	const withoutExplicitList = { ...saved.messaging! };
+	delete withoutExplicitList.privateTests;
+	const same = admin.saveSettings({ ...saved, messaging: withoutExplicitList });
+	expect(same.messaging?.privateTests).toEqual([tester]);
+	const changed = admin.saveSettings({
+		...same,
+		messaging: { ...withoutExplicitList, appId: '9999999999' }
+	});
+	expect(changed.messaging?.privateTests).toEqual([]);
+});

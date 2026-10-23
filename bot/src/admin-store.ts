@@ -9,7 +9,7 @@ import {
 import { mkdirSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { dirname } from 'node:path';
-import { httpUrl, parseGroups } from './config';
+import { httpUrl, officialId, parseGroups } from './config';
 import { defaultMessaging } from './admin-contracts';
 import type {
 	ManagedServer,
@@ -290,13 +290,39 @@ export class AdminStore {
 				throw new AdminValidationError('AppSecret 格式无效，请勿包含空格或换行。');
 			if (raw.buttons !== undefined && typeof raw.buttons !== 'boolean')
 				throw new AdminValidationError('快捷按钮开关无效。');
+			const privateTests =
+				raw.privateTests ?? (raw.appId === previous.appId ? (previous.privateTests ?? []) : []);
+			if (!Array.isArray(privateTests) || privateTests.length > 20)
+				throw new AdminValidationError('私聊测试账号不能超过20个。');
+			const testers = new Set<string>();
+			for (const tester of privateTests) {
+				if (
+					!tester ||
+					tester.appId !== raw.appId ||
+					!raw.appId ||
+					!officialId(tester.userOpenid) ||
+					testers.has(tester.userOpenid) ||
+					!groups.some((g) => g.groupId === tester.groupId)
+				)
+					throw new AdminValidationError(
+						'私聊测试账号需唯一、属于当前 AppID，并关联有效群组配置。'
+					);
+				testers.add(tester.userOpenid);
+			}
 			messaging = {
 				provider: raw.provider,
 				appId: raw.appId,
 				appSecret: raw.appSecret || (raw.appId === previous.appId ? previous.appSecret : ''),
-				buttons: raw.buttons ?? previous.buttons ?? true
+				buttons: raw.buttons ?? previous.buttons ?? true,
+				privateTests: privateTests.map(({ appId, userOpenid, groupId }) => ({
+					appId,
+					userOpenid,
+					groupId
+				}))
 			};
 		}
+		if (messaging.privateTests?.some((t) => !groups.some((g) => g.groupId === t.groupId)))
+			throw new AdminValidationError('请先移除该群配置关联的私聊测试账号。');
 		return { servers, groups, messaging };
 	}
 	async login(

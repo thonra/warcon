@@ -25,7 +25,9 @@ export function qqId(value: unknown): string | null {
 export const officialId = (value: unknown): value is string =>
 	typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 export const officialUserId = (value: string): boolean =>
-	/^qqofficial:[0-9]{5,20}:[a-zA-Z0-9_-]{1,128}:[a-zA-Z0-9_-]{1,128}$/.test(value);
+	/^qqofficial:(?:[0-9]{5,20}:[a-zA-Z0-9_-]{1,128}|c2c:[0-9]{5,20}):[a-zA-Z0-9_-]{1,128}$/.test(
+		value
+	);
 export function parseGroups(input: unknown): GroupConfig[] {
 	if (!Array.isArray(input) || !input.length) throw new Error('群配置必须是非空数组。');
 	const ids = new Set<string>();

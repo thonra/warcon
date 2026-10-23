@@ -24,7 +24,11 @@ export interface BotMessage {
 	/** Stamped by the authenticated transport, never taken from incoming QQ text. */
 	configurationRevision?: string;
 	/** Only reply routing metadata survives command completion, never command text or verification codes. */
-	officialReply?: { appId: string; groupOpenid: string; messageId: string; revision: string };
+	officialReply?: {
+		appId: string;
+		messageId: string;
+		revision: string;
+	} & ({ scope?: 'group'; groupOpenid: string } | { scope: 'c2c'; userOpenid: string });
 }
 export interface GamePlayer {
 	steamId: string;

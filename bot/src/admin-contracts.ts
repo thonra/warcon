@@ -6,6 +6,8 @@ export interface MessagingSettings {
 	appSecret: string;
 	/** Command buttons insert text into QQ; they never directly execute game operations. */
 	buttons?: boolean;
+	/** Explicitly approved C2C testers; reuse one existing community/server policy per identity. */
+	privateTests?: { appId: string; userOpenid: string; groupId: string }[];
 }
 export const defaultMessaging = (): MessagingSettings => ({
 	provider: 'napcat',

@@ -162,14 +162,14 @@ export class NapCatBot {
 			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claim();
 			if (!row) break;
-			let reply = '处理未完成，请稍后查询 /积分；涉及换边时请联系管理员核对，勿重复提交。';
+			let reply = '处理未完成，请稍后查询 /积分；涉及换边时请联系管理员核对，勿重复提交';
 			try {
 				const message: BotMessage = JSON.parse(row.payload);
 				const group = this.config.groups.find((g) => g.groupId === message.groupId);
-				if (!group || message.officialReply) reply = '该群已停用此接入方式。';
+				if (!group || message.officialReply) reply = '该群已停用此接入方式';
 				else if (message.configurationRevision !== this.config.revision)
-					reply = '机器人配置已更新，请重新发送命令。';
-				else if (this.now() - message.time > 120000) reply = '这条命令已超过两分钟，请重新发送。';
+					reply = '机器人配置已更新，请重新发送命令';
+				else if (this.now() - message.time > 120000) reply = '这条命令已超过两分钟，请重新发送';
 				else reply = await this.handler.handle(message, group);
 			} catch {
 				/* Never log message bodies, verification codes or upstream credentials. */

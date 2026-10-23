@@ -62,7 +62,7 @@ export class Inbox {
 		this.db
 			.query("UPDATE qq_inbox SET status='done', payload='', reply=? WHERE status='processing'")
 			.run(
-				'机器人上次处理时中断，未自动重试。请用 /积分 查询；若涉及换边，请联系管理员核对操作记录。'
+				'机器人上次处理时中断，未自动重试\n请用 /积分 查询；若涉及换边，请联系管理员核对操作记录'
 			);
 		this.db.exec("UPDATE qq_inbox SET status='reply_unknown' WHERE status='replying'");
 	}

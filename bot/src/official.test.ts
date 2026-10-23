@@ -559,7 +559,7 @@ async function until(condition: () => boolean) {
 }
 
 test('command buttons are actor-scoped and confirmation is a sendable command, never a direct effect', async () => {
-	const f = fixture(async () => '如确认，请在2分钟内发送 /确认 123456；不回复即取消。');
+	const f = fixture(async () => '如确认，请在2分钟内发送 /确认 123456；不回复即取消');
 	await f.client.emit('message', {}, raw());
 	await f.bot.pump();
 	const body = f.client.posts[0][3] as any;
@@ -569,7 +569,7 @@ test('command buttons are actor-scoped and confirmation is a sendable command, n
 		data: '/确认 123456',
 		enter: false
 	});
-	expect(body.content).toContain('后续命令也请 @机器人');
+	expect(body.content).toBe('如确认，请在2分钟内发送 /确认 123456；不回复即取消');
 });
 test('definite keyboard refusal falls back to text without re-executing; timeout never falls back', async () => {
 	const f = fixture();

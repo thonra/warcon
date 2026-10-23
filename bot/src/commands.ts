@@ -10,7 +10,7 @@ import {
 } from './contracts';
 import { BotStore, BotUserError, type Binding, type MoveOperation } from './store';
 
-const BIND_HELP = '请先发送 /绑定 你的SteamID64（17位数字），进入服务器后按游戏内私信完成验证。';
+const BIND_HELP = '请先发送 /绑定 你的SteamID64（17位数字），进入服务器后按游戏内私信完成验证';
 const cleanName = (name: string) => name.replace(/[\r\n\x00-\x1f]/g, ' ').slice(0, 80);
 function dayInZone(now: number, timezone: string) {
 	const parts = new Intl.DateTimeFormat('en-CA', {
@@ -117,8 +117,8 @@ export class CommandHandler implements BotHandler {
 				description: '取消待验证绑定和未确认的换边',
 				run: (message, group) =>
 					this.store.cancelPending(group.communityId, message.userId, group.serverId)
-						? '已取消待验证绑定和未确认的换边，不会扣除积分。已执行或待核实的操作不受影响。'
-						: '没有待取消的请求。已执行或待核实的换边请用 /积分 查询，或联系管理员。'
+						? '已取消待验证绑定和未确认的换边，不会扣除积分\n已执行或待核实的操作不受影响'
+						: '没有待取消的请求\n已执行或待核实的换边请用 /积分 查询，或联系管理员'
 			},
 			{
 				aliases: ['确认'],
@@ -130,7 +130,7 @@ export class CommandHandler implements BotHandler {
 	}
 	async handle(message: BotMessage, group: GroupConfig): Promise<string> {
 		if (message.groupId !== group.groupId || !message.userId || !message.id)
-			return '当前群组未授权使用这个服务器。';
+			return '当前群组未授权使用这个服务器';
 		message = { ...message, userId: this.store.accountUserId(group.communityId, message.userId) };
 		try {
 			this.assertCurrentConfiguration(message);
@@ -145,12 +145,12 @@ export class CommandHandler implements BotHandler {
 			}
 			const definition = this.commands.find((entry) => entry.aliases.includes(command));
 			if (!definition)
-				return '没有识别到这个命令。发送 /使用帮助 查看菜单，例如 /签到、/查对局、/换边 蓝。';
+				return '没有识别到这个命令\n发送 /使用帮助 查看菜单，例如 /签到、/查对局、/换边 蓝';
 			return await definition.run(message, group, argument);
 		} catch (error) {
 			if (error instanceof BotUserError) return error.message;
 			// Never echo transport errors: they can contain URLs, credentials or raw responses.
-			return '暂时无法完成操作，请稍后再试。若涉及换边，可用 /积分 查看状态；请勿连续重复操作。';
+			return '暂时无法完成操作，请稍后再试\n若涉及换边，可用 /积分 查看状态；请勿连续重复操作';
 		}
 	}
 	private assertCurrentConfiguration(message: BotMessage) {
@@ -158,15 +158,15 @@ export class CommandHandler implements BotHandler {
 			this.configurationRevision &&
 			message.configurationRevision !== this.configurationRevision()
 		)
-			throw new BotUserError('机器人配置已更新，请重新发送命令。');
+			throw new BotUserError('机器人配置已更新，请重新发送命令');
 	}
 	private help(group: GroupConfig) {
 		return [
 			`${group.serverName} · 自助服务`,
 			...this.commands.map(({ usage, description }) => `/${usage} — ${description}`),
 			'',
-			`每日签到 +${group.checkinPoints} 积分（${group.timezone}）；换边 ${group.moveCost} 积分，冷却 ${group.moveCooldownSeconds} 秒。`,
-			'换边会让游戏角色重新部署，需再次确认。绑定与积分由同一社区的群共享。请勿把游戏验证码交给他人。'
+			`每日签到 +${group.checkinPoints} 积分（${group.timezone}）；换边 ${group.moveCost} 积分，冷却 ${group.moveCooldownSeconds} 秒`,
+			'换边会让游戏角色重新部署，需再次确认\n绑定与积分由同一社区的群共享\n请勿把游戏验证码交给他人'
 		].join('\n');
 	}
 	private requireBinding(message: BotMessage, group: GroupConfig): Binding {
@@ -182,19 +182,19 @@ export class CommandHandler implements BotHandler {
 			snapshot.observedAt < this.now() - 15_000 ||
 			snapshot.observedAt > this.now() + 5_000
 		)
-			throw new BotUserError('服务器状态已过期，暂时无法操作。请稍后重试。');
+			throw new BotUserError('服务器状态已过期，暂时无法操作\n请稍后重试');
 		return snapshot;
 	}
 	private async bind(message: BotMessage, group: GroupConfig, steamId: string) {
 		if (!/^[0-9]{17}$/.test(steamId))
-			return '用法：/绑定 你的SteamID64\nSteamID64 是 17 位数字。请先进入本群对应的游戏服务器。';
+			return '用法：/绑定 你的SteamID64\nSteamID64 是 17 位数字\n请先进入本群对应的游戏服务器';
 		if (this.store.binding(group.communityId, message.userId))
-			return '你已经绑定了 Steam 账号。更换绑定请联系管理员。';
+			return '你已经绑定了 Steam 账号\n更换绑定请联系管理员';
 		const snapshot = await this.freshSnapshot(message, group);
 		this.assertCurrentConfiguration(message);
 		const player = snapshot.players.find((item) => item.steamId === steamId);
 		if (!player)
-			return '没有在服务器中找到这个 Steam 账号。请先进入本群对应的服务器，再发送绑定命令。';
+			return '没有在服务器中找到这个 Steam 账号\n请先进入本群对应的服务器，再发送绑定命令';
 		const code = this.code();
 		this.assertCurrentConfiguration(message);
 		this.store.beginBinding(group.communityId, message.userId, steamId, code, this.now());
@@ -202,21 +202,21 @@ export class CommandHandler implements BotHandler {
 			await this.warcon.whisper(
 				group.serverId,
 				steamId,
-				`${message.officialReply ? '官方机器人用户' : 'QQ账号'} ${message.userId} 正在申请绑定此 Steam 账号并关联已有积分。只有你本人发起时，才在 QQ 群发送 /验证 ${code}。5分钟内有效，请勿转告他人。`
+				`${message.officialReply ? '官方机器人用户' : 'QQ账号'} ${message.userId} 正在申请绑定此 Steam 账号并关联已有积分；只有你本人发起时，才在 QQ 群发送 /验证 ${code}；5分钟内有效，请勿转告他人`
 			);
 		} catch {
 			this.assertCurrentConfiguration(message);
-			return '游戏内验证码发送结果暂不确定。如果已收到，请在5分钟内发送 /验证 验证码；否则请一分钟后重新申请。验证码不会在QQ群展示。';
+			return '游戏内验证码发送结果暂不确定\n如果已收到，请在5分钟内发送 /验证 验证码；否则请一分钟后重新申请\n验证码不会在QQ群展示';
 		}
 		this.assertCurrentConfiguration(message);
-		return `已向游戏中的 ${cleanName(player.name)} 发送绑定验证码，请在5分钟内发送 /验证 6位验证码。验证码只在游戏内展示。`;
+		return `已向游戏中的 ${cleanName(player.name)} 发送绑定验证码，请在5分钟内发送 /验证 6位验证码\n验证码只在游戏内展示`;
 	}
 	private verify(message: BotMessage, group: GroupConfig, code: string) {
 		if (!/^[0-9]{6}$/.test(code))
-			return '用法：/验证 6位验证码。请使用刚刚在游戏内私信中收到的验证码。';
+			return '用法：/验证 6位验证码\n请使用刚刚在游戏内私信中收到的验证码';
 		this.assertCurrentConfiguration(message);
 		const binding = this.store.verifyBinding(group.communityId, message.userId, code, this.now());
-		return `绑定成功：${binding.steamId}\n现在可以 /签到、/积分、/查对局 或 /换边 蓝。`;
+		return `绑定成功：${binding.steamId}\n现在可以 /签到、/积分、/查对局 或 /换边 蓝`;
 	}
 	private checkin(message: BotMessage, group: GroupConfig) {
 		this.requireBinding(message, group);
@@ -230,8 +230,8 @@ export class CommandHandler implements BotHandler {
 			this.now()
 		);
 		return result.added
-			? `签到成功！+${group.checkinPoints} 积分，当前余额 ${result.balance}。\n签到日期：${day}（${group.timezone}）`
-			: `今天已经签到过啦，当前余额 ${result.balance} 积分。\n次日零点可再次签到（${group.timezone}）。`;
+			? `签到成功！+${group.checkinPoints} 积分，当前余额 ${result.balance}\n签到日期：${day}（${group.timezone}）`
+			: `今天已经签到过啦，当前余额 ${result.balance} 积分\n次日零点可再次签到（${group.timezone}）`;
 	}
 	private async points(message: BotMessage, group: GroupConfig) {
 		const binding = this.requireBinding(message, group);
@@ -239,22 +239,22 @@ export class CommandHandler implements BotHandler {
 		const pending = this.store.pending(group.communityId, binding.steamId);
 		if (pending)
 			lines.push(
-				`换边暂扣：${pending.cost} 积分；${pending.state === 'unknown' ? '结果待管理员核实' : '处理中'}。订单：${pending.id}`
+				`换边暂扣：${pending.cost} 积分；${pending.state === 'unknown' ? '结果待管理员核实' : '处理中'}\n订单：${pending.id}`
 			);
 		try {
 			const reserved = await this.warcon.reserved(group.serverId, binding.steamId);
 			this.assertCurrentConfiguration(message);
 			if (reserved.state === 'active')
 				lines.push(
-					`免排队：名单已配置；${reserved.expiresAt ? `到期 ${formatTime(reserved.expiresAt, group.timezone)}` : '未设置到期时间'}。`
+					`免排队：名单已配置；${reserved.expiresAt ? `到期 ${formatTime(reserved.expiresAt, group.timezone)}` : '未设置到期时间'}`
 				);
-			else if (reserved.state === 'none') lines.push('免排队：当前没有有效名额。');
-			else if (reserved.state === 'pending') lines.push('免排队：名单同步中，尚未确认生效。');
-			else lines.push('免排队：状态暂不可用，请联系管理员确认。');
+			else if (reserved.state === 'none') lines.push('免排队：当前没有有效名额');
+			else if (reserved.state === 'pending') lines.push('免排队：名单同步中，尚未确认生效');
+			else lines.push('免排队：状态暂不可用，请联系管理员确认');
 		} catch (error) {
 			if (error instanceof BotUserError) throw error;
 			this.assertCurrentConfiguration(message);
-			lines.push('免排队：暂时查询失败，积分余额不受影响。');
+			lines.push('免排队：暂时查询失败，积分余额不受影响');
 		}
 		return lines.join('\n');
 	}
@@ -276,23 +276,23 @@ export class CommandHandler implements BotHandler {
 			player
 				? `${cleanName(player.name)} · ${cleanName(player.faction ?? '尚未加入阵营')}\n击杀 ${player.kills} / 死亡 ${player.deaths} / 延迟 ${player.ping ?? '未知'} ms`
 				: binding
-					? '你目前不在这个服务器中。'
+					? '你目前不在这个服务器中'
 					: BIND_HELP
 		].join('\n');
 	}
 	private validateMove(snapshot: GameSnapshot, binding: Binding, faction: string) {
 		if (!snapshot.canMove)
-			throw new BotUserError('当前服务器未开放机器人换边，或机器人账号没有换边权限。');
+			throw new BotUserError('当前服务器未开放机器人换边，或机器人账号没有换边权限');
 		if (!snapshot.scores.some((score) => score.name === faction))
-			throw new BotUserError('本群的阵营映射与当前对局不匹配，请管理员检查配置后重试。');
+			throw new BotUserError('本群的阵营映射与当前对局不匹配，请管理员检查配置后重试');
 		const player = snapshot.players.find((item) => item.steamId === binding.steamId);
-		if (!player) throw new BotUserError('你目前不在本群对应的游戏服务器中。请进入服务器后再试。');
+		if (!player) throw new BotUserError('你目前不在本群对应的游戏服务器中\n请进入服务器后再试');
 		if (player.faction === faction)
-			throw new BotUserError(`你已经在 ${cleanName(faction)} 阵营，无需换边，也不会扣积分。`);
+			throw new BotUserError(`你已经在 ${cleanName(faction)} 阵营，无需换边，也不会扣积分`);
 	}
 	private async quoteMove(message: BotMessage, group: GroupConfig, color: string) {
 		if (!['蓝', '红', '绿'].includes(color))
-			return '用法：/换边 蓝（或红、绿）。也支持 /换边蓝、/换边红、/换边绿。';
+			return '用法：/换边 蓝（或红、绿）\n也支持 /换边蓝、/换边红、/换边绿';
 		const binding = this.requireBinding(message, group);
 		const faction = group.factions[color as TeamColor];
 		const snapshot = await this.freshSnapshot(message, group);
@@ -306,27 +306,26 @@ export class CommandHandler implements BotHandler {
 		);
 		const balance = this.store.balance(group.communityId, message.userId);
 		if (balance < group.moveCost)
-			return `积分不足：换边需要 ${group.moveCost}，当前余额 ${balance}。可以通过 /签到 获取积分。`;
+			return `积分不足：换边需要 ${group.moveCost}，当前余额 ${balance}\n可以通过 /签到 获取积分`;
 		const code = this.code();
 		this.assertCurrentConfiguration(message);
 		this.store.prepareMove(binding, group.serverId, faction, group.moveCost, code, this.now());
-		return `准备换到${color}方 ${cleanName(faction)}，费用 ${group.moveCost} 积分（当前 ${balance}）。\n角色会重新部署，可能丢失当前装备；换边后冷却 ${group.moveCooldownSeconds} 秒。\n如确认，请在2分钟内发送 /确认 ${code}；不回复即取消。`;
+		return `准备换到${color}方 ${cleanName(faction)}，费用 ${group.moveCost} 积分（当前 ${balance}）\n角色会重新部署，可能丢失当前装备；换边后冷却 ${group.moveCooldownSeconds} 秒\n如确认，请在2分钟内发送 /确认 ${code}；不回复即取消`;
 	}
 	private operationReply(operation: MoveOperation) {
 		switch (operation.state) {
 			case 'succeeded':
-				return `换边指令已成功执行：${cleanName(operation.faction)}，扣除 ${operation.cost} 积分。当前余额 ${this.store.balance(operation.communityId, operation.userId)}。`;
+				return `换边指令已成功执行：${cleanName(operation.faction)}，扣除 ${operation.cost} 积分\n当前余额 ${this.store.balance(operation.communityId, operation.userId)}`;
 			case 'refunded':
-				return `换边未执行，${operation.cost} 积分已退回。可重新发送换边命令。`;
+				return `换边未执行，${operation.cost} 积分已退回\n可重新发送换边命令`;
 			case 'running':
-				return '换边正在处理，请稍候。重复确认不会再次扣分或执行。';
+				return '换边正在处理，请稍候\n重复确认不会再次扣分或执行';
 			case 'unknown':
-				return `换边结果暂不确定，${operation.cost} 积分已暂扣。请联系管理员核实订单 ${operation.id}。系统不会自动重复换边或退款。`;
+				return `换边结果暂不确定，${operation.cost} 积分已暂扣\n请联系管理员核实订单 ${operation.id}\n系统不会自动重复换边或退款`;
 		}
 	}
 	private async confirmMove(message: BotMessage, group: GroupConfig, code: string) {
-		if (!/^[0-9]{6}$/.test(code))
-			return '用法：/确认 6位确认码。请使用机器人给你的最新换边确认码。';
+		if (!/^[0-9]{6}$/.test(code)) return '用法：/确认 6位确认码\n请使用机器人给你的最新换边确认码';
 		const binding = this.requireBinding(message, group);
 		const confirmation = this.store.confirmation(
 			group.communityId,
@@ -341,7 +340,7 @@ export class CommandHandler implements BotHandler {
 			confirmation.cost !== group.moveCost ||
 			!Object.values(group.factions).includes(confirmation.faction)
 		)
-			return '换边费用或阵营配置已更新，请重新发送换边命令。';
+			return '换边费用或阵营配置已更新，请重新发送换边命令';
 		const snapshot = await this.freshSnapshot(message, group);
 		this.assertCurrentConfiguration(message);
 		this.validateMove(snapshot, binding, confirmation.faction);

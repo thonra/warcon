@@ -129,21 +129,21 @@ export class BotStore {
 		this.db
 			.transaction(() => {
 				if (this.binding(communityId, this.accountUserId(communityId, userId)))
-					throw new BotUserError('你已经绑定了 Steam 账号。更换绑定请联系管理员。');
+					throw new BotUserError('你已经绑定了 Steam 账号\n更换绑定请联系管理员');
 				if (
 					!officialUserId(userId) &&
 					this.db
 						.query('SELECT 1 FROM bindings WHERE communityId = ? AND steamId = ?')
 						.get(communityId, steamId)
 				)
-					throw new BotUserError('这个 Steam 账号已被绑定，请联系管理员核实。');
+					throw new BotUserError('这个 Steam 账号已被绑定，请联系管理员核实');
 				const previous = this.db
 					.query<{ createdAt: number }, [string, string]>(
 						'SELECT createdAt FROM binding_challenges WHERE communityId = ? AND userId = ?'
 					)
 					.get(communityId, userId);
 				if (previous && now - previous.createdAt < 60_000)
-					throw new BotUserError('验证码已发送，请查看游戏内私信。每分钟最多申请一次。');
+					throw new BotUserError('验证码已发送，请查看游戏内私信\n每分钟最多申请一次');
 				const salt = randomBytes(16).toString('hex');
 				this.db
 					.query(
@@ -159,22 +159,22 @@ export class BotStore {
 		const result = this.db
 			.transaction((): Binding | string => {
 				if (this.binding(communityId, this.accountUserId(communityId, userId)))
-					return '你已经完成绑定，无需重复验证。';
+					return '你已经完成绑定，无需重复验证';
 				const challenge = this.db
 					.query<ChallengeRow, [string, string]>(
 						'SELECT steamId, salt, hash, expiresAt, attempts FROM binding_challenges WHERE communityId = ? AND userId = ?'
 					)
 					.get(communityId, userId);
 				if (!challenge || challenge.expiresAt <= now)
-					return '验证码不存在或已过期。请先发送 /绑定 你的SteamID64。';
-				if (challenge.attempts >= 5) return '验证失败次数过多，请等待一分钟后重新 /绑定。';
+					return '验证码不存在或已过期\n请先发送 /绑定 你的SteamID64';
+				if (challenge.attempts >= 5) return '验证失败次数过多，请等待一分钟后重新 /绑定';
 				if (!matches(challenge.salt, challenge.hash, code)) {
 					this.db
 						.query(
 							'UPDATE binding_challenges SET attempts = attempts + 1 WHERE communityId = ? AND userId = ?'
 						)
 						.run(communityId, userId);
-					return `验证码不正确，还可尝试 ${4 - challenge.attempts} 次。请查看游戏内私信，不要使用其他人的验证码。`;
+					return `验证码不正确，还可尝试 ${4 - challenge.attempts} 次\n请查看游戏内私信，不要使用其他人的验证码`;
 				}
 				const existing = this.db
 					.query<Binding, [string, string]>(
@@ -182,7 +182,7 @@ export class BotStore {
 					)
 					.get(communityId, challenge.steamId);
 				if (existing) {
-					if (!officialUserId(userId)) return '这个 Steam 账号已被其他人绑定，请联系管理员核实。';
+					if (!officialUserId(userId)) return '这个 Steam 账号已被其他人绑定，请联系管理员核实';
 					this.db
 						.query(
 							'INSERT INTO identity_links (communityId,identityId,userId,verifiedAt) VALUES (?,?,?,?)'
@@ -238,14 +238,14 @@ export class BotStore {
 				'UPDATE accounts SET balance = balance + ? WHERE communityId = ? AND userId = ? AND balance + ? >= 0 AND balance + ? <= 9007199254740991'
 			)
 			.run(delta, communityId, userId, delta, delta);
-		if (result.changes !== 1) throw new BotUserError('积分不足，或积分余额已达到上限。');
+		if (result.changes !== 1) throw new BotUserError('积分不足，或积分余额已达到上限');
 	}
 	checkin(communityId: string, userId: string, day: string, points: number, now: number) {
 		if (!Number.isSafeInteger(points) || points < 0) throw new Error('Invalid check-in points');
 		return this.db
 			.transaction(() => {
 				if (!this.binding(communityId, userId))
-					throw new BotUserError('请先 /绑定 你的SteamID64，并在游戏内完成验证码验证。');
+					throw new BotUserError('请先 /绑定 你的SteamID64，并在游戏内完成验证码验证');
 				const inserted = this.db
 					.query(
 						'INSERT OR IGNORE INTO checkins (communityId, userId, day, createdAt) VALUES (?, ?, ?, ?)'
@@ -269,8 +269,8 @@ export class BotStore {
 		if (pending)
 			throw new BotUserError(
 				pending.state === 'unknown'
-					? `上一笔换边结果待管理员核实，已暂时锁定后续换边。订单：${pending.id}。积分暂扣，不会重复执行。`
-					: '上一笔换边正在处理，请稍候。'
+					? `上一笔换边结果待管理员核实，已暂时锁定后续换边\n订单：${pending.id}\n积分暂扣，不会重复执行`
+					: '上一笔换边正在处理，请稍候'
 			);
 		const last = this.db
 			.query<{ finishedAt: number }, [string, string]>(
@@ -279,7 +279,7 @@ export class BotStore {
 			.get(communityId, steamId);
 		const remaining = last ? last.finishedAt + cooldownSeconds * 1000 - now : 0;
 		if (remaining > 0)
-			throw new BotUserError(`换边冷却中，请 ${Math.ceil(remaining / 1000)} 秒后再试。`);
+			throw new BotUserError(`换边冷却中，请 ${Math.ceil(remaining / 1000)} 秒后再试`);
 	}
 	prepareMove(
 		binding: Binding,
@@ -332,9 +332,9 @@ export class BotStore {
 			)
 			.get(communityId, userId, serverId);
 		if (!row || !matches(row.salt, row.hash, code))
-			throw new BotUserError('没有找到你的有效确认码。请先发送 /换边 蓝（或红、绿）。');
+			throw new BotUserError('没有找到你的有效确认码\n请先发送 /换边 蓝（或红、绿）');
 		if (!row.operationId && row.expiresAt <= now)
-			throw new BotUserError('换边确认已过期，请重新发送换边命令。');
+			throw new BotUserError('换边确认已过期，请重新发送换边命令');
 		return row;
 	}
 	claimMove(
@@ -347,16 +347,16 @@ export class BotStore {
 				const confirmation = this.db
 					.query<Confirmation, [string]>('SELECT * FROM confirmations WHERE id = ?')
 					.get(confirmationId);
-				if (!confirmation) throw new BotUserError('确认已被新的换边请求替代，请使用最新确认码。');
+				if (!confirmation) throw new BotUserError('确认已被新的换边请求替代，请使用最新确认码');
 				if (confirmation.operationId)
 					return { operation: this.operation(confirmation.operationId)!, claimed: false };
 				if (confirmation.expiresAt <= now)
-					throw new BotUserError('换边确认已过期，请重新发送换边命令。');
+					throw new BotUserError('换边确认已过期，请重新发送换边命令');
 				if (
 					this.binding(confirmation.communityId, confirmation.userId)?.steamId !==
 					confirmation.steamId
 				)
-					throw new BotUserError('绑定信息已变化，请重新发起换边。');
+					throw new BotUserError('绑定信息已变化，请重新发起换边');
 				this.assertCanMove(confirmation.communityId, confirmation.steamId, cooldownSeconds, now);
 				const id = randomUUID();
 				this.addLedger(

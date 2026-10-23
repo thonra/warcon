@@ -146,7 +146,7 @@ test('official parser scopes member identity by app and group and ignores unrela
 		{ groupOpenid: '' },
 		{ messageId: '' },
 		{ attachments: [{}] },
-		{ content: '' },
+		{ rawEventType: 'GROUP_MESSAGE_CREATE', content: '' },
 		{ content: 'a'.repeat(301) },
 		{ rawEventType: 'GROUP_MESSAGE_CREATE', content: '换边 蓝' }
 	])
@@ -159,6 +159,71 @@ test('official parser scopes member identity by app and group and ignores unrela
 		officialMessage(raw({ rawEventType: 'GROUP_MESSAGE_CREATE', content: '/帮助' }), APP, NOW)?.text
 	).toBe('/帮助');
 });
+test('a bare group mention opens help without interpreting quoted, private or media content', () => {
+	for (const content of ['', ' ', '<@12345>', ' <@!12345> '])
+		expect(officialMessage(raw({ content }), APP, NOW)?.text).toBe('/帮助');
+	for (const extra of [
+		{ rawEventType: 'GROUP_MESSAGE_CREATE', content: '' },
+		{ content: '', msgType: 103, msgElements: [{ content: '/换边 蓝' }] },
+		{ content: '', msgType: 3 },
+		{ content: '', attachments: [{}] },
+		{ kind: 'c2c', rawEventType: 'C2C_MESSAGE_CREATE', content: '' }
+	])
+		expect(officialMessage(raw(extra as Partial<QQBotInboundMessage>), APP, NOW)).toBeNull();
+});
+test('bare mentions discover an unmapped group and reply only after explicit group authorization', async () => {
+	const f = fixture(async (m) => m.text);
+	f.c.groups = [];
+	await f.client.emit('message', {}, raw({ content: '' }));
+	expect(f.bot.status().groups).toEqual([{ openid: GROUP, lastSeenAt: NOW }]);
+	await f.bot.pump();
+	expect(f.calls).toHaveLength(0);
+	expect(f.client.posts).toHaveLength(0);
+	f.c.groups = [{ ...group }];
+	await f.client.emit('message', {}, raw({ content: '', messageId: 'authorized-bare-mention' }));
+	await f.bot.pump();
+	expect(f.calls).toHaveLength(1);
+	expect(f.calls[0].text).toBe('/帮助');
+	expect(f.client.posts).toHaveLength(1);
+	expect(f.client.posts[0][3]).toMatchObject({
+		content: '/帮助',
+		msg_id: 'authorized-bare-mention'
+	});
+});
+test('receive diagnostics distinguish filtering and mapping and never expose SDK log contents', async () => {
+	const f = fixture();
+	const logs = spyOn(console, 'warn').mockImplementation(() => {});
+	cleanup.push(() => logs.mockRestore());
+	await f.client.emit(
+		'message',
+		{},
+		raw({
+			content: '',
+			attachments: [{ content_type: 'image/jpeg', url: 'https://example.invalid/image.jpg' }]
+		})
+	);
+	f.c.groups = [];
+	await f.client.emit('message', {}, raw());
+	expect(f.bot.status()).toMatchObject({
+		receivedMessages: 2,
+		filteredMessages: 1,
+		unmappedMessages: 1,
+		lastReceivedAt: NOW
+	});
+	f.options[0].logger?.error?.('Message parse error: secret-response-body /绑定 private-code');
+	expect(f.bot.status()).toMatchObject({
+		sdkErrors: 1,
+		lastSdkError: '官方消息解析失败，请检查接收记录。'
+	});
+	expect(JSON.stringify(logs.mock.calls)).not.toContain('secret-response-body');
+	expect(JSON.stringify(logs.mock.calls)).not.toContain('private-code');
+	await f.client.emit('disconnected');
+	f.bot.reconnect();
+	f.options[0].logger?.error?.('retired client error');
+	await f.client.emit('message', {}, raw());
+	expect(f.bot.status().receivedMessages).toBe(2);
+	expect(f.bot.status().sdkErrors).toBe(1);
+});
 test('official SDK configuration uses documented endpoints and minimum event subscription', () => {
 	const f = fixture();
 	expect(f.options[0]).toMatchObject({
@@ -168,7 +233,7 @@ test('official SDK configuration uses documented endpoints and minimum event sub
 		transport: 'websocket',
 		markdownSupport: false
 	});
-	expect(f.options[0].logger).toBeUndefined();
+	expect(f.options[0].logger?.debug).toBeUndefined();
 });
 test('authenticated group discovery does not grant command access; explicit mapping is required', async () => {
 	const f = fixture();
@@ -415,7 +480,8 @@ test.each(['group', 'c2c'] as const)(
 			c,
 			inbox,
 			{
-				handle: async () => {
+				handle: async (message) => {
+					expect(message.text).toBe('/帮助');
 					calls++;
 					return '官方接入正常';
 				}
@@ -451,7 +517,7 @@ test.each(['group', 'c2c'] as const)(
 				t: kind === 'group' ? 'GROUP_AT_MESSAGE_CREATE' : 'C2C_MESSAGE_CREATE',
 				d: {
 					id: 'platform-message-id',
-					content: ' /帮助',
+					content: kind === 'group' ? '' : ' /帮助',
 					timestamp: new Date().toISOString(),
 					group_openid: GROUP,
 					author: { member_openid: USER, user_openid: USER }

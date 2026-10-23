@@ -21,6 +21,12 @@ export interface OfficialStatus extends NapCatStatus {
 	groupEvents: { event: string; openid: string; receivedAt: number }[];
 	lastReplyError: string | null;
 	buttonsAvailable: boolean;
+	receivedMessages: number;
+	filteredMessages: number;
+	unmappedMessages: number;
+	lastReceivedAt: number | null;
+	sdkErrors: number;
+	lastSdkError: string | null;
 }
 export type OfficialClient = Pick<QQBot, 'on' | 'start' | 'stop' | 'apiClient' | 'tokenManager'>;
 export type OfficialFactory = (options: QQBotOptions) => OfficialClient;
@@ -55,6 +61,14 @@ export function officialMessage(
 		.replace(/^\s*<@!?[a-zA-Z0-9_-]+>\s*/, '')
 		.trim()
 		.replace(/^／/, '/');
+	// QQ strips the @bot prefix. A plain bare mention opens help; quoted/media messages stay ignored.
+	if (
+		!text &&
+		raw.rawEventType === 'GROUP_AT_MESSAGE_CREATE' &&
+		(raw.msgType === undefined || raw.msgType === 0) &&
+		!raw.msgElements?.length
+	)
+		text = '/帮助';
 	if (!text || text.length > 300 || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) return null;
 	if (raw.rawEventType === 'GROUP_MESSAGE_CREATE' && !text.startsWith('/')) return null;
 	if (!text.startsWith('/')) text = '/' + text;
@@ -151,7 +165,13 @@ export class OfficialBot {
 		error: null,
 		lastReplyError: null,
 		buttonsAvailable: true,
-		groupEvents: []
+		groupEvents: [],
+		receivedMessages: 0,
+		filteredMessages: 0,
+		unmappedMessages: 0,
+		lastReceivedAt: null,
+		sdkErrors: 0,
+		lastSdkError: null
 	};
 	constructor(
 		private config: BotConfig,
@@ -181,6 +201,16 @@ export class OfficialBot {
 		}
 		this.state = {
 			...this.state,
+			...(changedApp
+				? {
+						receivedMessages: 0,
+						filteredMessages: 0,
+						unmappedMessages: 0,
+						lastReceivedAt: null,
+						sdkErrors: 0,
+						lastSdkError: null
+					}
+				: {}),
 			appId: settings.appId,
 			selfId: '',
 			nickname: '',
@@ -241,6 +271,21 @@ export class OfficialBot {
 			baseUrl: 'https://api.bot.qq.com',
 			tokenBaseUrl: 'https://api.bot.qq.com',
 			markdownSupport: false,
+			logger: {
+				info: () => {},
+				error: (message) => {
+					if (!active()) return;
+					const parse = message.includes('Message parse error');
+					this.state.sdkErrors++;
+					this.state.lastSdkError = parse
+						? '官方消息解析失败，请检查接收记录。'
+						: '官方 SDK 发生错误，请检查连接与接收记录。';
+					// SDK strings may contain response bodies. Persist only a fixed category.
+					console.warn(
+						JSON.stringify({ type: 'qq.sdk_error', appId, category: parse ? 'parse' : 'sdk' })
+					);
+				}
+			},
 			reconnect: { maxAttempts: 10 }
 		});
 		this.client = client;
@@ -287,8 +332,13 @@ export class OfficialBot {
 		});
 		client.on('message', (_ctx, raw) => {
 			if (!active() || !this.state.online) return;
+			this.state.receivedMessages++;
+			this.state.lastReceivedAt = this.now();
 			const message = officialMessage(raw, appId, this.now());
-			if (!message) return;
+			if (!message) {
+				this.state.filteredMessages++;
+				return;
+			}
 			this.state.lastEventAt = this.now();
 			const privateChat = raw.kind === 'c2c';
 			const seen = privateChat ? this.seenPrivate : this.seen;
@@ -305,7 +355,10 @@ export class OfficialBot {
 					? g.groupId === tester?.groupId
 					: g.officialAppId === appId && g.officialGroupId === message.groupId
 			);
-			if (!group) return; // Discovery never grants command access, in either conversation type.
+			if (!group) {
+				this.state.unmappedMessages++;
+				return; // Discovery never grants command access, in either conversation type.
+			}
 			message.officialReply = {
 				appId,
 				...(privateChat

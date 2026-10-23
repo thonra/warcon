@@ -17,6 +17,8 @@ import type { ManagedSettings } from './admin-contracts';
 import { defaultMessaging } from './admin-contracts';
 import type { WarconPort } from './contracts';
 import { randomUUID } from 'node:crypto';
+import { OfficialMenus } from './official-menu';
+import type { ReplyOverrides } from './reply-copy';
 
 async function main(): Promise<void> {
 	process.umask(0o077);
@@ -46,8 +48,10 @@ async function main(): Promise<void> {
 	let inbox: Inbox | undefined;
 	let adminStore: AdminStore | undefined;
 	let official: OfficialBot | undefined;
+	let replyTemplates: ReplyOverrides = {};
+	const currentReplies = () => replyTemplates;
 	try {
-		store = new BotStore(path);
+		store = new BotStore(path, currentReplies);
 		store.recoverInterrupted();
 		if (command === 'unknown') {
 			console.log(JSON.stringify(store.listUnknown(), null, 2));
@@ -88,6 +92,7 @@ async function main(): Promise<void> {
 			const auth = config!.managed;
 			adminStore = new AdminStore(path, auth.masterKey);
 			await adminStore.initialize(auth.username, auth.password);
+			replyTemplates = adminStore.getReplies().templates;
 			let current: ManagedSettings = adminStore.getSettings();
 			messaging = current.messaging ?? defaultMessaging();
 			config!.groups = current.groups;
@@ -97,6 +102,10 @@ async function main(): Promise<void> {
 			);
 			admin = new AdminApi(adminStore, store, {
 				publicOrigin: auth.origin,
+				onRepliesChanged: () => {
+					replyTemplates = adminStore!.getReplies().templates;
+				},
+				menus: new OfficialMenus(() => messaging),
 				onSettingsChanged: () => {
 					current = adminStore!.getSettings();
 					messaging = current.messaging ?? defaultMessaging();
@@ -136,11 +145,21 @@ async function main(): Promise<void> {
 			});
 		} else warcon = new WarconClient({ baseUrl: config!.warconUrl, token: config!.warconToken });
 		const handler = new CommandHandler(store, warcon, {
-			configurationRevision: () => config!.revision
+			configurationRevision: () => config!.revision,
+			replyTemplates: currentReplies
 		});
-		official = new OfficialBot(config!, inbox, handler);
+		official = new OfficialBot(config!, inbox, handler, undefined, undefined, currentReplies);
 		official.configure(messaging);
-		const bot = new NapCatBot(config!, inbox, handler, fetch, Date.now, connection, napcatActive);
+		const bot = new NapCatBot(
+			config!,
+			inbox,
+			handler,
+			fetch,
+			Date.now,
+			connection,
+			napcatActive,
+			currentReplies
+		);
 		const server = Bun.serve({
 			hostname: config!.host,
 			port: config!.port,

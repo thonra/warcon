@@ -2,6 +2,7 @@ import { afterEach, expect, spyOn, test } from 'bun:test';
 import { QQBot, type QQBotInboundMessage, type QQBotOptions } from '@tencent-connect/qqbot-nodejs';
 import { OfficialBot, officialMessage, type OfficialClient } from './official';
 import { Inbox } from './inbox';
+import type { ReplyOverrides } from './reply-copy';
 import { NapCatBot } from './napcat';
 import type { BotConfig } from './config';
 import type { BotMessage, GroupConfig } from './contracts';
@@ -87,7 +88,10 @@ class FakeClient {
 		this.finish?.();
 	}
 }
-function fixture(handle?: (m: BotMessage, g: GroupConfig) => Promise<string>) {
+function fixture(
+	handle?: (m: BotMessage, g: GroupConfig) => Promise<string>,
+	replies: () => ReplyOverrides = () => ({})
+) {
 	const c = config();
 	const inbox = new Inbox(':memory:');
 	const clients: FakeClient[] = [];
@@ -109,7 +113,8 @@ function fixture(handle?: (m: BotMessage, g: GroupConfig) => Promise<string>) {
 			clients.push(f);
 			return f as unknown as OfficialClient;
 		},
-		() => now
+		() => now,
+		replies
 	);
 	cleanup.push(() => {
 		bot.stop();
@@ -769,4 +774,22 @@ test('group event history is bounded and ignores untrusted event types, malforme
 	await f.client.emit('rawEvent', { eventType: 'GROUP_ADD_ROBOT', data: { group_openid: GROUP } });
 	expect(f.bot.status().groupEvents).toEqual([]);
 	expect(f.bot.status().groups).toEqual([]);
+});
+
+test('editing reply presentation changes outgoing text on the existing connection', async () => {
+	let overrides: ReplyOverrides = {};
+	const f = fixture(
+		async () => '正文',
+		() => overrides
+	);
+	await f.client.emit('message', {}, raw());
+	await f.bot.pump();
+	expect((f.client.posts[0][3] as any).content).toBe('正文');
+	overrides = { 'group.suffix': '新的附加文字' };
+	await f.client.emit('message', {}, raw({ messageId: 'after-copy-edit' }));
+	await f.bot.pump();
+	expect((f.client.posts[1][3] as any).content).toBe('正文\n新的附加文字');
+	expect(f.clients).toHaveLength(1);
+	expect(f.c.revision).toBe('v1');
+	expect(f.bot.status().online).toBe(true);
 });

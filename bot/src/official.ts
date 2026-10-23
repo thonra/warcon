@@ -4,6 +4,7 @@ import type { BotHandler, BotMessage, GroupConfig } from './contracts';
 import type { MessagingSettings } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
 import { Inbox } from './inbox';
+import { groupReply, renderReply, type ReplyOverrides, type ReplyKey } from './reply-copy';
 
 const GROUP_EVENTS = new Set([
 	'GROUP_ADD_ROBOT',
@@ -178,8 +179,12 @@ export class OfficialBot {
 		private inbox: Inbox,
 		private handler: BotHandler,
 		private factory: OfficialFactory = (options) => new QQBot(options),
-		private now = Date.now
+		private now = Date.now,
+		private replyTemplates: () => ReplyOverrides = () => ({})
 	) {}
+	private text(key: ReplyKey) {
+		return renderReply(key, {}, this.replyTemplates());
+	}
 
 	status(): OfficialStatus {
 		return {
@@ -428,14 +433,14 @@ export class OfficialBot {
 		for (let i = 0; i < 20 && this.active(generation); i++) {
 			const row = this.inbox.claim();
 			if (!row) break;
-			let reply = '处理未完成，请查询 /积分；涉及换边时请联系管理员核对，勿重复提交';
+			let reply = this.text('transport.incomplete');
 			try {
 				const message: BotMessage = JSON.parse(row.payload);
 				const group = this.config.groups.find((g) => g.groupId === message.groupId);
-				if (!this.authorized(message.officialReply, group)) reply = '该会话接入已停用';
+				if (!this.authorized(message.officialReply, group)) reply = this.text('transport.disabled');
 				else if (message.configurationRevision !== this.config.revision)
-					reply = '配置已更新，请重新发送命令';
-				else if (this.now() - message.time > 120_000) reply = '命令已超过两分钟，请重新发送';
+					reply = this.text('transport.changed');
+				else if (this.now() - message.time > 120_000) reply = this.text('transport.expired');
 				else reply = await this.handler.handle(message, group!);
 			} catch {
 				/* Never expose message text, codes or upstream credentials. */
@@ -471,7 +476,13 @@ export class OfficialBot {
 					if (!this.active(generation) || target.revision !== this.config.revision)
 						throw new Error();
 					const content =
-						target.scope === 'c2c' ? `${group!.serverName} · 私聊测试\n${row.reply}` : row.reply;
+						target.scope === 'c2c'
+							? renderReply(
+									'private.wrapper',
+									{ serverName: group!.serverName, reply: row.reply ?? '' },
+									this.replyTemplates()
+								)
+							: groupReply(row.reply ?? '', this.replyTemplates());
 					const send = async (keyboard: boolean) => {
 						const response = await client.apiClient.request<{
 							id?: unknown;

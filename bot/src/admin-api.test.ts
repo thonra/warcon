@@ -336,3 +336,85 @@ describe('admin API boundary', () => {
 		).toBe(429);
 	});
 });
+
+test('reply edits require authentication and CSRF, preserve game confirmations and reject stale edits', async () => {
+	const f = await setup();
+	expect((await f.call('/replies')).status).toBe(401);
+	await f.login();
+	const initial = await (await f.call('/replies')).json();
+	const config = f.admin.publicSettings();
+	const now = Date.now();
+	f.bot.beginBinding('c', '200', '76561198000000001', '123456', now);
+	const binding = f.bot.verifyBinding('c', '200', '123456', now);
+	f.bot.prepareMove(binding, 'alpha', 'Blue', 3, '654321', now);
+	expect(
+		(
+			await f.call(
+				'/replies',
+				'PUT',
+				{ revision: initial.revision, templates: { 'help.title': '新标题 {serverName}' } },
+				{ 'x-csrf-token': 'invalid' }
+			)
+		).status
+	).toBe(403);
+	const saved = await f.call('/replies', 'PUT', {
+		revision: initial.revision,
+		templates: { 'help.title': '新标题 {serverName}' }
+	});
+	expect(saved.status).toBe(200);
+	expect(f.changed()).toBe(0);
+	expect(f.admin.publicSettings()).toEqual(config);
+	expect(f.bot.confirmation('c', '200', 'alpha', '654321', now).cost).toBe(3);
+	expect(
+		(await f.call('/replies', 'PUT', { revision: initial.revision, templates: {} })).status
+	).toBe(409);
+	const next = await (await f.call('/replies')).json();
+	expect(
+		(
+			await f.call('/replies', 'PUT', {
+				revision: next.revision,
+				templates: { 'help.title': '{appSecret}' }
+			})
+		).status
+	).toBe(400);
+	expect((await (await f.call('/replies')).json()).templates).toEqual({
+		'help.title': '新标题 {serverName}'
+	});
+	const snapshot = join(f.folder, 'customization-backup.sqlite');
+	f.bot.backup(snapshot);
+	const restored = new AdminStore(snapshot, f.key);
+	stores.push(restored);
+	expect(restored.getReplies().templates).toEqual({ 'help.title': '新标题 {serverName}' });
+});
+test('menu changes require admin authentication and CSRF and checkpoint before a cloud write', async () => {
+	const f = await setup();
+	let saved = 0;
+	let beforeWrite = false;
+	const snapshot = {
+		appId: '1234567890',
+		panelId: 'p_test',
+		version: 1,
+		items: [],
+		remark: 'test'
+	};
+	f.hooks.menus = {
+		read: async () => snapshot,
+		save: async (_data, checkpoint) => {
+			checkpoint(snapshot);
+			beforeWrite = true;
+			saved++;
+			return { ...snapshot, version: 2 };
+		}
+	};
+	expect((await f.call('/official-menu')).status).toBe(401);
+	await f.login();
+	expect((await f.call('/official-menu')).status).toBe(200);
+	expect((await f.call('/official-menu', 'PUT', snapshot, { 'x-csrf-token': 'bad' })).status).toBe(
+		403
+	);
+	expect(saved).toBe(0);
+	expect((await f.call('/official-menu', 'PUT', snapshot)).status).toBe(200);
+	expect(beforeWrite).toBe(true);
+	expect(saved).toBe(1);
+	expect(f.changed()).toBe(0);
+});

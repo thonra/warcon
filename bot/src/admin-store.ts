@@ -10,6 +10,7 @@ import { mkdirSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { dirname } from 'node:path';
 import { httpUrl, officialId, parseGroups } from './config';
+import { validateReplies, type ReplyOverrides } from './reply-copy';
 import { defaultMessaging } from './admin-contracts';
 import type {
 	ManagedServer,
@@ -51,7 +52,10 @@ export class AdminStore {
 			CREATE TABLE IF NOT EXISTS bot_admin_sessions (tokenHash TEXT PRIMARY KEY, username TEXT NOT NULL, csrf TEXT NOT NULL, expiresAt INTEGER NOT NULL);
 			CREATE TABLE IF NOT EXISTS bot_admin_settings (id INTEGER PRIMARY KEY CHECK (id = 1), encrypted TEXT NOT NULL, updatedAt INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0));
 			CREATE TABLE IF NOT EXISTS bot_admin_audit (id INTEGER PRIMARY KEY, username TEXT NOT NULL, action TEXT NOT NULL, createdAt INTEGER NOT NULL);
+			CREATE TABLE IF NOT EXISTS bot_admin_copy (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL DEFAULT 0, templates TEXT NOT NULL DEFAULT '{}');
+			CREATE TABLE IF NOT EXISTS bot_admin_menu_history (id INTEGER PRIMARY KEY, appId TEXT NOT NULL, username TEXT NOT NULL, snapshot TEXT NOT NULL, createdAt INTEGER NOT NULL);
 		`);
+		this.db.exec('INSERT OR IGNORE INTO bot_admin_copy(id) VALUES(1)');
 		// Existing deployments keep their encrypted settings; the first versioned edit starts at 0.
 		const columns = this.db
 			.query<{ name: string }, []>('PRAGMA table_info(bot_admin_settings)')
@@ -135,6 +139,42 @@ export class AdminStore {
 	}
 	getSettings(): ManagedSettings {
 		return this.readSettings().settings;
+	}
+	getReplies(): { revision: number; templates: ReplyOverrides } {
+		const row = this.db
+			.query<{ revision: number; templates: string }, []>(
+				'SELECT revision,templates FROM bot_admin_copy WHERE id=1'
+			)
+			.get()!;
+		return { revision: row.revision, templates: JSON.parse(row.templates) };
+	}
+	saveReplies(revision: unknown, templates: unknown, actor = 'local') {
+		if (
+			!Number.isSafeInteger(revision) ||
+			Number(revision) < 0 ||
+			Number(revision) >= Number.MAX_SAFE_INTEGER
+		)
+			throw new AdminValidationError('文案版本无效，请重新读取');
+		const next = validateReplies(templates);
+		this.db
+			.transaction(() => {
+				const result = this.db
+					.query(
+						'UPDATE bot_admin_copy SET templates=?,revision=revision+1 WHERE id=1 AND revision=?'
+					)
+					.run(JSON.stringify(next), revision as number);
+				if (result.changes !== 1) throw new AdminConflictError();
+				this.audit(actor, 'replies.updated');
+			})
+			.immediate();
+		return this.getReplies();
+	}
+	menuCheckpoint(appId: string, snapshot: unknown, actor: string) {
+		this.db
+			.query(
+				'INSERT INTO bot_admin_menu_history(appId,username,snapshot,createdAt) VALUES(?,?,?,?)'
+			)
+			.run(appId, actor, JSON.stringify(snapshot), Date.now());
 	}
 	publicSettings(): PublicSettings {
 		const { settings, revision } = this.readSettings();

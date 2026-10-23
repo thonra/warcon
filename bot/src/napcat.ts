@@ -3,6 +3,7 @@ import { qqId, type BotConfig } from './config';
 import type { BotHandler, BotMessage } from './contracts';
 import { Inbox } from './inbox';
 import type { NapCatConnection } from './napcat-connection';
+import { groupReply, renderReply, type ReplyOverrides } from './reply-copy';
 
 export type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -93,7 +94,8 @@ export class NapCatBot {
 		private fetcher: Fetcher = fetch,
 		private now: () => number = Date.now,
 		private connection?: NapCatConnection,
-		private active: () => boolean = () => true
+		private active: () => boolean = () => true,
+		private replyTemplates: () => ReplyOverrides = () => ({})
 	) {}
 	async receive(request: Request): Promise<Response> {
 		const url = new URL(request.url);
@@ -162,14 +164,16 @@ export class NapCatBot {
 			if (this.connection && !this.connection.status().online) return;
 			const row = this.inbox.claim();
 			if (!row) break;
-			let reply = '处理未完成，请稍后查询 /积分；涉及换边时请联系管理员核对，勿重复提交';
+			let reply = renderReply('transport.incomplete', {}, this.replyTemplates());
 			try {
 				const message: BotMessage = JSON.parse(row.payload);
 				const group = this.config.groups.find((g) => g.groupId === message.groupId);
-				if (!group || message.officialReply) reply = '该群已停用此接入方式';
+				if (!group || message.officialReply)
+					reply = renderReply('transport.disabled', {}, this.replyTemplates());
 				else if (message.configurationRevision !== this.config.revision)
-					reply = '机器人配置已更新，请重新发送命令';
-				else if (this.now() - message.time > 120000) reply = '这条命令已超过两分钟，请重新发送';
+					reply = renderReply('transport.changed', {}, this.replyTemplates());
+				else if (this.now() - message.time > 120000)
+					reply = renderReply('transport.expired', {}, this.replyTemplates());
 				else reply = await this.handler.handle(message, group);
 			} catch {
 				/* Never log message bodies, verification codes or upstream credentials. */
@@ -204,7 +208,10 @@ export class NapCatBot {
 						group_id: Number(row.group_id),
 						message: [
 							{ type: 'at', data: { qq: row.user_id } },
-							{ type: 'text', data: { text: '\n' + row.reply } }
+							{
+								type: 'text',
+								data: { text: '\n' + groupReply(row.reply ?? '', this.replyTemplates()) }
+							}
 						]
 					})
 				});

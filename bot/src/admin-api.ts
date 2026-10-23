@@ -6,11 +6,15 @@ import { BotStore } from './store';
 import type { ManagedServer, SettingsUpdate } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
 import type { OfficialStatus } from './official';
+import { REPLY_CATALOG, ReplyValidationError } from './reply-copy';
+import { DEFAULT_MENU, MenuError, type MenuPort } from './official-menu';
 
 export interface AdminHooks {
 	/** Fixed operator-configured browser origin for TLS termination; never inferred from proxy headers. */
 	publicOrigin?: string;
 	onSettingsChanged: () => void;
+	onRepliesChanged?: () => void;
+	menus?: MenuPort;
 	testServer: (
 		server: ManagedServer
 	) => Promise<{ map: string; playerCount: number; factions: string[] }>;
@@ -47,11 +51,11 @@ function tokenFrom(request: Request) {
 function cookie(token: string, secure: boolean, clear = false) {
 	return `${COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : 43_200}${secure ? '; Secure' : ''}`;
 }
-async function body(request: Request): Promise<Record<string, unknown>> {
+async function body(request: Request, maxBytes = MAX_BODY): Promise<Record<string, unknown>> {
 	if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json'))
 		throw new ApiFailure(415, '请提交JSON请求。');
 	const length = Number(request.headers.get('content-length'));
-	if (length > MAX_BODY) throw new ApiFailure(413, '请求内容过大。');
+	if (length > maxBytes) throw new ApiFailure(413, '请求内容过大。');
 	const reader = request.body?.getReader();
 	if (!reader) throw new ApiFailure(400, '请求内容为空。');
 	const chunks: Uint8Array[] = [];
@@ -60,7 +64,7 @@ async function body(request: Request): Promise<Record<string, unknown>> {
 		const { done, value } = await reader.read();
 		if (done) break;
 		total += value.byteLength;
-		if (total > MAX_BODY) {
+		if (total > maxBytes) {
 			await reader.cancel();
 			throw new ApiFailure(413, '请求内容过大。');
 		}
@@ -137,6 +141,27 @@ export class AdminApi {
 			}
 			if (path === '/config' && request.method === 'GET')
 				return json({ ok: true, ...this.store.publicSettings() });
+			if (path === '/replies' && request.method === 'GET')
+				return json({ ok: true, ...this.store.getReplies(), catalog: REPLY_CATALOG });
+			if (path === '/replies' && request.method === 'PUT') {
+				const data = await body(request, 524_288);
+				const saved = this.store.saveReplies(data.revision, data.templates, session.username);
+				this.hooks.onRepliesChanged?.();
+				return json({ ok: true, ...saved, catalog: REPLY_CATALOG });
+			}
+			if (path === '/official-menu' && request.method === 'GET') {
+				if (!this.hooks.menus) throw new ApiFailure(503, '菜单服务尚未配置');
+				return json({ ok: true, ...(await this.hooks.menus.read()), defaults: DEFAULT_MENU });
+			}
+			if (path === '/official-menu' && request.method === 'PUT') {
+				if (!this.hooks.menus) throw new ApiFailure(503, '菜单服务尚未配置');
+				const data = await body(request);
+				const result = await this.hooks.menus.save(data, (before) =>
+					this.store.menuCheckpoint(before.appId, before, session.username)
+				);
+				this.store.audit(session.username, 'menu.updated');
+				return json({ ok: true, ...result, defaults: DEFAULT_MENU });
+			}
 			if (path === '/reconnect' && request.method === 'POST' && this.hooks.reconnect) {
 				this.hooks.reconnect();
 				this.store.audit(session.username, 'messaging.reconnect');
@@ -228,6 +253,10 @@ export class AdminApi {
 			}
 			throw new ApiFailure(404, '管理接口不存在。');
 		} catch (error) {
+			if (error instanceof ReplyValidationError)
+				return json({ ok: false, error: error.message }, 400);
+			if (error instanceof MenuError)
+				return json({ ok: false, error: error.message, code: error.code }, error.status);
 			if (error instanceof AdminConflictError)
 				return json({ ok: false, error: error.message, code: 'configuration_conflict' }, 409);
 			if (error instanceof ApiFailure)

@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'bun:test';
+import { afterEach, expect, spyOn, test } from 'bun:test';
 import { QQBot, type QQBotInboundMessage, type QQBotOptions } from '@tencent-connect/qqbot-nodejs';
 import { OfficialBot, officialMessage, type OfficialClient } from './official';
 import { Inbox } from './inbox';
@@ -435,6 +435,16 @@ test.each(['group', 'c2c'] as const)(
 				privateTests: [{ appId: APP, userOpenid: USER, groupId: group.groupId }]
 			});
 			await until(() => bot.status().online);
+			socket.send(
+				JSON.stringify({
+					op: 0,
+					s: 2,
+					t: 'GROUP_ADD_ROBOT',
+					d: { group_openid: GROUP, timestamp: Math.floor(Date.now() / 1000) }
+				})
+			);
+			await until(() => bot.status().groupEvents.length === 1);
+			expect(calls).toBe(0);
 			const event = {
 				op: 0,
 				s: 2,
@@ -647,4 +657,50 @@ test('revoking C2C while waiting for access token cannot send an authorized earl
 	await work;
 	expect(f.calls).toHaveLength(1);
 	expect(client.posts).toHaveLength(0);
+});
+
+test('group lifecycle notifications discover IDs without authorizing commands or recording raw payloads', async () => {
+	const log = spyOn(console, 'info').mockImplementation(() => {});
+	cleanup.push(() => log.mockRestore());
+	const f = fixture();
+	f.c.groups = [];
+	await f.client.emit('rawEvent', {
+		eventType: 'GROUP_ADD_ROBOT',
+		data: { group_openid: GROUP, op_member_openid: 'private-operator', content: 'private-content' }
+	});
+	expect(f.bot.status().groupEvents).toEqual([
+		{ event: 'GROUP_ADD_ROBOT', openid: GROUP, receivedAt: NOW }
+	]);
+	expect(f.bot.status().groups).toEqual([{ openid: GROUP, lastSeenAt: NOW }]);
+	await f.client.emit('message', {}, raw());
+	await f.bot.pump();
+	expect(f.calls).toHaveLength(0);
+	expect(f.client.posts).toHaveLength(0);
+	expect(JSON.stringify(log.mock.calls)).not.toContain('private-');
+	await f.client.emit('rawEvent', { eventType: 'GROUP_DEL_ROBOT', data: { group_openid: GROUP } });
+	expect(f.bot.status().groups).toEqual([]);
+	expect(f.bot.status().groupEvents[0].event).toBe('GROUP_DEL_ROBOT');
+});
+test('group event history is bounded and ignores untrusted event types, malformed IDs and retired clients', async () => {
+	const log = spyOn(console, 'info').mockImplementation(() => {});
+	cleanup.push(() => log.mockRestore());
+	const f = fixture();
+	for (const payload of [
+		{ eventType: 'GROUP_JOIN_REQUEST', data: { group_openid: GROUP } },
+		{ eventType: 'GROUP_ADD_ROBOT', data: null },
+		{ eventType: 'GROUP_ADD_ROBOT', data: { group_openid: '../bad' } }
+	])
+		await f.client.emit('rawEvent', payload);
+	expect(f.bot.status().groupEvents).toEqual([]);
+	expect(log).not.toHaveBeenCalled();
+	for (let i = 0; i < 35; i++)
+		await f.client.emit('rawEvent', {
+			eventType: 'GROUP_MSG_RECEIVE',
+			data: { group_openid: 'GROUP_' + i }
+		});
+	expect(f.bot.status().groupEvents).toHaveLength(30);
+	f.bot.configure({ provider: 'official', appId: '9999999999', appSecret: 'synthetic' });
+	await f.client.emit('rawEvent', { eventType: 'GROUP_ADD_ROBOT', data: { group_openid: GROUP } });
+	expect(f.bot.status().groupEvents).toEqual([]);
+	expect(f.bot.status().groups).toEqual([]);
 });

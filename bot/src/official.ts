@@ -5,12 +5,20 @@ import type { MessagingSettings } from './admin-contracts';
 import type { NapCatStatus } from './napcat-connection';
 import { Inbox } from './inbox';
 
+const GROUP_EVENTS = new Set([
+	'GROUP_ADD_ROBOT',
+	'GROUP_DEL_ROBOT',
+	'GROUP_MSG_RECEIVE',
+	'GROUP_MSG_REJECT'
+]);
 export interface OfficialStatus extends NapCatStatus {
 	provider: 'official';
 	appId: string;
 	phase: 'unconfigured' | 'connecting' | 'online' | 'offline' | 'standby';
 	groups: { openid: string; lastSeenAt: number }[];
 	privateUsers: { openid: string; lastSeenAt: number }[];
+	/** Recent lifecycle notifications observed by this process, not a complete membership list. */
+	groupEvents: { event: string; openid: string; receivedAt: number }[];
 	lastReplyError: string | null;
 	buttonsAvailable: boolean;
 }
@@ -142,7 +150,8 @@ export class OfficialBot {
 		lastEventAt: null,
 		error: null,
 		lastReplyError: null,
-		buttonsAvailable: true
+		buttonsAvailable: true,
+		groupEvents: []
 	};
 	constructor(
 		private config: BotConfig,
@@ -168,6 +177,7 @@ export class OfficialBot {
 		if (changedApp) {
 			this.seen.clear();
 			this.seenPrivate.clear();
+			this.state.groupEvents = [];
 		}
 		this.state = {
 			...this.state,
@@ -260,6 +270,20 @@ export class OfficialBot {
 		client.on('error', (error) => {
 			if (active())
 				this.state.error = safeError(error, '官方接口暂时不可用，请检查凭据、机器人权限及网络。');
+		});
+		client.on('rawEvent', ({ eventType, data }) => {
+			if (!active() || !this.state.online || !GROUP_EVENTS.has(eventType)) return;
+			const openid = (data as { group_openid?: unknown } | null)?.group_openid;
+			if (!officialId(openid)) return;
+			const receivedAt = this.now();
+			const event = { event: eventType, openid, receivedAt };
+			this.state.lastEventAt = receivedAt;
+			this.state.groupEvents = [event, ...this.state.groupEvents].slice(0, 30);
+			this.seen.delete(openid);
+			if (eventType !== 'GROUP_DEL_ROBOT') this.seen.set(openid, receivedAt);
+			if (this.seen.size > 100) this.seen.delete(this.seen.keys().next().value!);
+			// Record only identifiers and event type. Never log raw data, messages, or operator identity.
+			console.info(JSON.stringify({ type: 'qq.group_event', appId, ...event }));
 		});
 		client.on('message', (_ctx, raw) => {
 			if (!active() || !this.state.online) return;
